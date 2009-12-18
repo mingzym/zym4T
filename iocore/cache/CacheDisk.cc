@@ -205,7 +205,7 @@ CacheDisk::syncDone(int event, void *data)
 
 /* size is in store blocks */
 DiskPartBlock *
-CacheDisk::create_partition(int number, int size_in_blocks, int scheme)
+CacheDisk::create_partition(int number, ink_off_t size_in_blocks, int scheme)
 {
 
   if (size_in_blocks == 0)
@@ -216,7 +216,7 @@ CacheDisk::create_partition(int number, int size_in_blocks, int scheme)
 
   if (!q)
     return NULL;
-  int max_blocks = MAX_PART_SIZE >> STORE_BLOCK_SHIFT;
+  ink_off_t max_blocks = MAX_PART_SIZE >> STORE_BLOCK_SHIFT;
   size_in_blocks = (size_in_blocks <= max_blocks) ? size_in_blocks : max_blocks;
 
   int blocks_per_part = PART_BLOCK_SIZE / STORE_BLOCK_SIZE;

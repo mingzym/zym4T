@@ -90,6 +90,46 @@ public:
   {
     return &_action;
   }
+  bool set_pin_in_cache(time_t time_pin)
+  {
+    ink_assert(!"implemented");
+    return false;
+  }
+  bool set_disk_io_priority(int priority)
+  {
+    ink_assert(!"implemented");
+    return false;
+  }
+  time_t get_pin_in_cache()
+  {
+    ink_assert(!"implemented");
+    return 0;
+  }
+  int
+  get_disk_io_priority()
+  {
+    ink_assert(!"implemented");
+    return 0;
+  }
+  int get_header(void **ptr, int *len) 
+  {
+    ink_assert(!"implemented");
+    return -1;
+  }
+  int set_header(void *ptr, int len) 
+  {
+    ink_assert(!"implemented");
+    return -1;
+  }
+  int get_object_size()
+  {
+    ink_assert(!"implemented");
+    return -1;
+  }
+  VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink_off_t off) {
+    ink_assert(!"implemented");
+    return 0;
+  }
 
   bool appendCacheHttpInfo(const void *data, const inku64 size);
   bool completeCacheHttpInfo(const void *data, const inku64 size);

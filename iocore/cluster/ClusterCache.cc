@@ -1232,7 +1232,7 @@ cache_op_ClusterFunction(ClusterMachine * from, void *data, int len)
         // Save hostname and attach it to the continuation since we may
         //  need it if we convert this to an open_write.
 
-        c->ic_hostname = new_IOBufferData(buffer_size_to_index(host_len));
+        c->ic_hostname = new_IOBufferData(iobuffer_size_to_index(host_len));
         c->ic_hostname_len = host_len;
 
         memcpy(c->ic_hostname->data(), hostname, host_len);
@@ -1489,7 +1489,7 @@ CacheContinuation::setupVCdataRead(int event, VConnection * vc)
     ink_release_assert(caller_buf_freebytes);
     SET_HANDLER((CacheContHandler) & CacheContinuation::VCdataRead);
 
-    int size_index = buffer_size_to_index(caller_buf_freebytes);
+    int size_index = iobuffer_size_to_index(caller_buf_freebytes);
     MIOBuffer *buf = new_MIOBuffer(size_index);
     readahead_reader = buf->alloc_reader();
 
@@ -2781,7 +2781,7 @@ ink32 CacheContinuation::getObjectSize(VConnection * vc, int opcode, CacheHTTPIn
     }
 
   } else {
-    object_size = vc->get_object_size();
+    object_size = ((CacheVC *)vc)->get_object_size();
   }
 
   if (ret_ci && !ret_ci->valid()) {

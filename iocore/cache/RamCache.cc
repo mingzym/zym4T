@@ -82,7 +82,7 @@ RamCache::get(INK_MD5 * key, Ptr<IOBufferData> *ret_data, inku32 auxkey1, inku32
   if (partition_size == 0)
     return 0;
 
-  inku32 k = key->word(2);
+  inku32 k = key->word(3);
   inku32 pp = k % n_partitions;
   RamCachePartition *p = &partition[pp];
   inku32 o = k / n_partitions;
@@ -105,11 +105,11 @@ RamCache::get(INK_MD5 * key, Ptr<IOBufferData> *ret_data, inku32 auxkey1, inku32
 int
 RamCache::get_lock(INK_MD5 * key, Ptr<IOBufferData> *ret_data, EThread * t, inku32 auxkey1, inku32 auxkey2)
 {
-  inku32 k = key->word(2);
+  inku32 k = key->word(3);
   int pp = k % n_partitions;
   RamCachePartition *p = &partition[pp];
   (void) p;
-  MUTEX_TRY_LOCK(l, p->lock, t);
+  CACHE_TRY_LOCK(l, p->lock, t);
   if (!l)
     return -1;
   return get(key, ret_data, auxkey1, auxkey2);
@@ -118,13 +118,13 @@ RamCache::get_lock(INK_MD5 * key, Ptr<IOBufferData> *ret_data, EThread * t, inku
 void
 RamCache::remove_entry(RamCacheEntry * ee, RamCachePartition * p, EThread * t)
 {
-  inku32 oo = ee->key.word(2) / n_partitions;
+  inku32 oo = ee->key.word(3) / n_partitions;
   inku32 ii = oo % partition_size;
   p->bucket[ii].remove(ee, ee->hash_link);
   p->cur_bytes -= ee->data->block_size();
   ProxyMutex *mutex = part->mutex;
   CACHE_SUM_DYN_STAT(cache_ram_cache_bytes_stat, -ee->data->block_size());
-  Debug("ram_cache", "put %X %d %d FREED", ee->key.word(2), ee->auxkey1, ee->auxkey2);
+  Debug("ram_cache", "put %X %d %d FREED", ee->key.word(3), ee->auxkey1, ee->auxkey2);
   free_RamCacheEntry(ee, t);
 }
 
@@ -138,7 +138,7 @@ RamCache::put(INK_MD5 * key, IOBufferData * data, EThread * t, inku32 auxkey1, i
 
   ProxyMutex *mutex = t->mutex;
   (void) mutex;
-  inku32 k = key->word(2);
+  inku32 k = key->word(3);
   inku32 pp = k % n_partitions;
   inku32 o = k / n_partitions;
   inku32 i = o % partition_size;
@@ -192,11 +192,11 @@ RamCache::put(INK_MD5 * key, IOBufferData * data, EThread * t, inku32 auxkey1, i
 int
 RamCache::put_lock(INK_MD5 * key, IOBufferData * data, EThread * t, inku32 auxkey1, inku32 auxkey2)
 {
-  inku32 k = key->word(2);
+  inku32 k = key->word(3);
   int pp = k % n_partitions;
   RamCachePartition *p = &partition[pp];
   (void) p;
-  MUTEX_TRY_LOCK(l, p->lock, t);
+  CACHE_TRY_LOCK(l, p->lock, t);
   if (!l)
     return -1;
   return put(key, data, t, auxkey1, auxkey2);
@@ -209,7 +209,7 @@ RamCache::fixup(INK_MD5 * key, inku32 old_auxkey1, inku32 old_auxkey2, inku32 ne
   if (partition_size == 0)
     return 0;
   Debug("ram_cache", "fixup %d", key);
-  inku32 k = key->word(2);
+  inku32 k = key->word(3);
   inku32 pp = k % n_partitions;
   RamCachePartition *p = &partition[pp];
   inku32 o = k / n_partitions;

@@ -159,7 +159,7 @@ int auto_clear_hostdb_flag = 0;
 int lock_process = DEFAULT_LOCK_PROCESS;
 extern int fds_limit;
 extern int cluster_port_number;
-extern int CacheClusteringEnabled;
+extern int cache_clustering_enabled;
 char cluster_host[DOMAIN_NAME_MAX + 1] = DEFAULT_CLUSTER_HOST;
 
 //         = DEFAULT_CLUSTER_PORT_NUMBER;
@@ -1708,10 +1708,10 @@ main(int argc, char **argv)
   RecGetRecordInt("proxy.local.cluster.type", &temp_int);
   cluster_type = (int) temp_int;
   if (cluster_type == 1) {
-    CacheClusteringEnabled = 1;
+    cache_clustering_enabled = 1;
     Note("cache clustering enabled");
   } else {
-    CacheClusteringEnabled = 0;
+    cache_clustering_enabled = 0;
     /* 3com does not want these messages to be seen */
     Note("cache clustering disabled");
 

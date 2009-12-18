@@ -30,25 +30,24 @@
  ****************************************************************************/
 
 #include "P_AIO.h"
+
+#define MAX_DISKS_POSSIBLE 100
+#define SLEEP_TIME 100
+
 // globals
+
 int ts_config_with_inkdiskio = 0;
-#define MAX_DISKS_POSSIBLE 100
-#define SLEEP_TIME 100
-
-
-#define MAX_DISKS_POSSIBLE 100
-#define SLEEP_TIME 100
-
 /* structure to hold information about each file descriptor */
 AIO_Reqs *aio_reqs[MAX_DISKS_POSSIBLE];
-
+/* number of unique file descriptors in the aio_reqs array */
+volatile int num_filedes = 0;
 RecRawStatBlock *aio_rsb = NULL;
 // acquire this mutex before inserting a new entry in the aio_reqs array.
 // Don't need to acquire this for searching the array
 static ink_mutex insert_mutex;
-
 RecInt cache_config_threads_per_disk = 12;
 static RecInt cache_config_aio_sleep_time = SLEEP_TIME;
+Continuation *aio_err_callbck = 0;
 
 // AIO Stats
 inku64 aio_num_read = 0;
@@ -56,13 +55,7 @@ inku64 aio_bytes_read = 0;
 inku64 aio_num_write = 0;
 inku64 aio_bytes_written = 0;
 
-
-
-/* number of unique file descriptors in the aio_reqs array */
-volatile int num_filedes = 0;
-
-Continuation *aio_err_callbck = 0;
-
+static void aio_move(AIO_Reqs * req);
 
 //////////////////////////////////////////////////////////////////////////
 ///////////////                    INKIO                 /////////////////
@@ -193,18 +186,6 @@ drain_thread_queue(int thread_id)
     inkaio_submit(get_kcb(this_ethread()));
 }
 
-#if 0
-inline void
-print_thread_counters(Event * e, AIO_Reqs * req)
-{
-  Warning
-    ("Thread[%d] aio_pending: %d, aio_queued: %d, pending_size: %d, max_aio_queued: %d\naioread[%d] aioread_done[%d] aiowrite[%d] aiowritedone[%d] events_len[%d] events_len_done[%d]",
-     e->ethread->id, req->pending, req->queued, pending_size, max_aio_queued, (get_kcb(e->ethread))->aioread,
-     (get_kcb(e->ethread))->aioread_done, (get_kcb(e->ethread))->aiowrite, (get_kcb(e->ethread))->aiowrite_done,
-     (get_kcb(e->ethread))->events_len, (get_kcb(e->ethread))->events_len_done);
-}
-#endif
-static void aio_move(AIO_Reqs * req);
 int
 DiskWriteMonitor::monitor_main(int event, Event * e)
 {
@@ -550,10 +531,8 @@ aio_move(AIO_Reqs * req)
 {
   AIOCallback *next = NULL, *prev = NULL, *cb = (AIOCallback *) ink_atomiclist_popall(&req->aio_temp_list);
   /* flip the list */
-
   if (!cb)
     return;
-
   while (cb->link.next) {
     next = (AIOCallback *) cb->link.next;
     cb->link.next = prev;
@@ -562,7 +541,6 @@ aio_move(AIO_Reqs * req)
   }
   /* fix the last pointer */
   cb->link.next = prev;
-
   for (; cb; cb = next) {
     next = (AIOCallback *) cb->link.next;
     cb->link.next = NULL;
@@ -602,19 +580,16 @@ aio_queue_req(AIOCallbackInternal * op)
     /* search for the matching file descriptor */
     for (; thread_ndx < num_filedes; thread_ndx++) {
       if (aio_reqs[thread_ndx]->filedes == op->aiocb.aio_fildes) {
-
         /* found the matching file descriptor */
         req = aio_reqs[thread_ndx];
         break;
       }
     }
-
     if (!req) {
       ink_mutex_acquire(&insert_mutex);
       if (thread_ndx == num_filedes) {
         /* insert a new entry */
         req = aio_init_fildes(op->aiocb.aio_fildes);
-
       } else {
         /* a new entry was inserted between the time we checked the 
            aio_reqs and acquired the mutex. check the aio_reqs array to 
@@ -626,13 +601,10 @@ aio_queue_req(AIOCallbackInternal * op)
             break;
           }
         }
-        if (!req) {
+        if (!req)
           req = aio_init_fildes(op->aiocb.aio_fildes);
-        }
-
       }
       ink_mutex_release(&insert_mutex);
-
     }
     op->aio_req = req;
   }
@@ -653,12 +625,10 @@ Lacquirelock:
 #ifdef AIO_STATS
     ink_atomic_increment(&data->num_queue, 1);
 #endif
-    if (!INK_ATOMICLIST_EMPTY(req->aio_temp_list)) {
+    if (!INK_ATOMICLIST_EMPTY(req->aio_temp_list))
       aio_move(req);
-    }
     /* now put the new request */
     aio_insert(op, req);
-
     ink_cond_signal(&req->aio_cond);
     ink_mutex_release(&req->aio_mutex);
   }
@@ -784,22 +754,16 @@ aio_thread_main(void *arg)
   for (;;) {
     do {
       current_req = my_aio_req;
-
       /* check if any pending requests on the atomic list */
-
-      if (!INK_ATOMICLIST_EMPTY(my_aio_req->aio_temp_list)) {
+      if (!INK_ATOMICLIST_EMPTY(my_aio_req->aio_temp_list))
         aio_move(my_aio_req);
-      }
-
       if (!(op = my_aio_req->aio_todo.pop()) && !(op = my_aio_req->http_aio_todo.pop()))
         break;
-
 #ifdef AIO_STATS
       num_requests--;
       current_req->queued--;
       ink_atomic_increment((int *) &current_req->pending, 1);
 #endif
-
       // update the stats;
       if (op->aiocb.aio_lio_opcode == LIO_WRITE) {
         aio_num_write++;
@@ -842,19 +806,12 @@ aio_thread_main(void *arg)
          read.
        */
       if (op->aiocb.aio_lio_opcode == LIO_WRITE) {
-        MUTEX_TRY_LOCK(lock, op->mutex, thr_info->mutex->thread_holding);
-        if (!lock) {
-          eventProcessor.schedule_imm(op);
-        } else {
-          if (!op->action.cancelled)
-            op->action.continuation->handleEvent(AIO_EVENT_DONE, op);
-        }
-      } else {
-        eventProcessor.schedule_imm(op);
-
-      }
+        MUTEX_LOCK(lock, op->mutex, thr_info->mutex->thread_holding);
+        if (!op->action.cancelled)
+          op->action.continuation->handleEvent(AIO_EVENT_DONE, op);
+      } else
+        op->thread->schedule_imm(op);
       ink_mutex_acquire(&my_aio_req->aio_mutex);
-
     } while (1);
     if (timed_wait) {
       timespec ts = ink_based_hrtime_to_timespec(ink_get_hrtime() + HRTIME_MSECONDS(cache_config_aio_sleep_time));

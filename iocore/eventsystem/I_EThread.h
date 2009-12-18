@@ -277,7 +277,7 @@ public:
   ProxyAllocator evacuationBlockAllocator;
   ProxyAllocator ioDataAllocator;
   ProxyAllocator ioBlockAllocator;
-  ProxyAllocator ioBufAllocator[9];
+  ProxyAllocator ioBufAllocator[DEFAULT_BUFFER_SIZES];
 
 private:
 

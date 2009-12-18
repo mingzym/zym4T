@@ -6513,7 +6513,7 @@ HttpTransact::handle_trace_and_options_requests(State * s, HTTPHdr * incoming_hd
         free_internal_msg_buffer(s->internal_msg_buffer, s->internal_msg_buffer_fast_allocator_size);
       }
 
-      if (s->internal_msg_buffer_size <= DEFAULT_MAX_BUFFER_SIZE) {
+      if (s->internal_msg_buffer_size <= max_iobuffer_size) {
         s->internal_msg_buffer_fast_allocator_size = buffer_size_to_index(s->internal_msg_buffer_size);
         s->internal_msg_buffer = (char *) ioBufAllocator[s->internal_msg_buffer_fast_allocator_size].alloc_void();
       } else {

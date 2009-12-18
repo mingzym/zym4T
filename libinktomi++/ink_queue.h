@@ -71,11 +71,13 @@ extern "C"
 
   typedef union
   {
+#if defined(__i386__)
     struct
     {
       void *pointer;
       ink32 version;
     } s;
+#endif
     ink64 data;
   } head_p;
 

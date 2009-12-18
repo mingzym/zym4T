@@ -45,6 +45,10 @@ typedef long long ink64;
 typedef unsigned long long inku64;
 typedef off_t ink_off_t;
 
+#define INKU64_MAX 18446744073709551615ULL
+#define INK64_MAX 9223372036854775807LL
+#define INK64_MIN (-INK64_MAX -1LL)
+
 /*******************************************************************
  ** x86
   ******************************************************************/

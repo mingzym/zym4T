@@ -33,10 +33,10 @@
 #define CACHE_ALT_INDEX_DEFAULT     -1
 #define CACHE_ALT_REMOVED           -2
 
-#define CACHE_DB_MAJOR_VERSION      19
+#define CACHE_DB_MAJOR_VERSION      20
 #define CACHE_DB_MINOR_VERSION      0
 
-#define CACHE_DIR_MAJOR_VERSION     16
+#define CACHE_DIR_MAJOR_VERSION     17
 #define CACHE_DIR_MINOR_VERSION     0
 
 #define CACHE_DB_FDS                128
@@ -126,4 +126,11 @@ enum CacheFragType
 
 #define CacheKey INK_MD5
 #define CACHE_ALLOW_MULTIPLE_WRITES 1
+
+/* uses of the CacheKey
+   word(0) - cache partition segment
+   word(1) - cache partition bucket
+   word(2) - tag (lower bits), hosttable hash (upper bits)
+   word(3) - ram cache hash, lookaside cache
+ */
 #endif // __CACHE_DEFS_H__

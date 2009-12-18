@@ -1928,7 +1928,7 @@ ICPProcessor::start()
   // Setup custom allocators
   //
   // replaced with generic IOBufferBlock allocator
-  ICPHandlerCont::ICPDataBuf_IOBuffer_sizeindex = iobuffer_size_to_index(MAX_ICP_MSGSIZE);
+  ICPHandlerCont::ICPDataBuf_IOBuffer_sizeindex = iobuffer_size_to_index(MAX_ICP_MSGSIZE, MAX_BUFFER_SIZE_INDEX);
 
   //
   // Setup ICP stats callbacks

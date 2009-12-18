@@ -87,6 +87,27 @@ ClusterVConnectionBase::do_io_read(Continuation * acont, int anbytes, MIOBuffer 
 }
 
 VIO *
+ClusterVConnectionBase::do_io_pread(Continuation * acont, ink64 anbytes, MIOBuffer * abuffer, ink_off_t off)
+{
+  ink_assert(!"implemented");
+  return 0;
+}
+
+int
+ClusterVConnection::get_header(void **ptr, int *len) 
+{
+  ink_assert(!"implemented");
+  return -1;
+}
+
+int
+ClusterVConnection::set_header(void *ptr, int len) 
+{
+  ink_assert(!"implemented");
+  return -1;
+}
+
+VIO *
 ClusterVConnectionBase::do_io_write(Continuation * acont, int anbytes, IOBufferReader * abuffer, bool owner)
 {
   ink_assert(!closed);

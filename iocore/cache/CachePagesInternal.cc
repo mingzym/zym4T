@@ -153,23 +153,15 @@ ShowCacheInternal::showPartConnections(int event, Event * e)
     sprintf(nbytes, "%d", vc->vio.nbytes);
     sprintf(todo, "%d", vc->vio.ntodo());
 
-#if 1
-    if (vc->f.http_request && vc->request.valid()) {
+    if (vc->f.frag_type == CACHE_FRAG_TYPE_HTTP && vc->request.valid()) {
       URL *u = vc->request.url_get(&uu);
       u->print(url, 8000, &ib, &xd);
       url[ib] = 0;
-    }
-    //else if (vc->vector.get(vc->alternate_index)->valid()) {
-    //  URL* u = vc->vector.get(vc->alternate_index)->request_url_get(&uu);
-    //  u->print(url, 8000, &ib, &xd);
-    //  url[ib] = 0;
-    //} 
-    else if (vc->alternate.valid()) {
+    } else if (vc->alternate.valid()) {
       URL *u = vc->alternate.request_url_get(&uu);
       u->print(url, 8000, &ib, &xd);
       url[ib] = 0;
     } else
-#endif
       vc->key.string(url);
     CHECK_SHOW(show("<tr>" "<td>%s</td>"        // operation
                     "<td>%s</td>"       // Part
@@ -279,7 +271,7 @@ ShowCacheInternal::showPartPartitions(int event, Event * e)
     agg_todo++;
   CHECK_SHOW(show("<tr>" "<td>%s</td>"  // ID
                   "<td>%d</td>" // blocks
-                  "<td>%d</td>" // directory entries
+                  "<td>%lld</td>" // directory entries
                   "<td>%d</td>" // write position
                   "<td>%d</td>" // write agg to do
                   "<td>%d</td>" // write agg to do size
@@ -291,7 +283,7 @@ ShowCacheInternal::showPartPartitions(int event, Event * e)
                   "</tr>\n",
                   p->hash_id,
                   (int) ((p->len - (p->start - p->skip)) / INK_BLOCK_SIZE),
-                  p->buckets * DIR_DEPTH * DIR_SEGMENTS,
+                  (inku64)(p->buckets * DIR_DEPTH * p->segments),
                   (int) ((p->header->write_pos - p->start) / INK_BLOCK_SIZE),
                   agg_todo,
                   p->agg_todo_size,
@@ -330,7 +322,7 @@ ShowCacheInternal::showSegSegment(int event, Event * e)
                   "<td>%d</td>"
                   "<td>%d</td>" "<td>%d</td>" "<td>%d</td>" "</tr>\n", free, used, empty, valid, agg_valid, avg_size));
   seg_index++;
-  if (seg_index < DIR_SEGMENTS)
+  if (seg_index < p->segments)
     CONT_SCHED_LOCK_RETRY(this);
   else {
     CHECK_SHOW(show("</table>\n"));

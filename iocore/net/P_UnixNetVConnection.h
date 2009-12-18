@@ -187,10 +187,6 @@ public:
   void readReschedule(NetHandler * nh);
   void netActivity(EThread * lthread);
 
-#ifdef DEBUG
-  // Class static data
-  static int enable_debug_trace;
-#endif
   Action *action()
   {
     return &action_;

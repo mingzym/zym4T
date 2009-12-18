@@ -73,7 +73,7 @@ ClusterControl::real_alloc_data(int read_access, bool align_ink32_on_non_ink64_b
 
   ink_assert(!data);
   if ((len + DATA_HDR + sizeof(ink32)) <= DEFAULT_MAX_BUFFER_SIZE) {
-    size_index = buffer_size_to_index(len + DATA_HDR + sizeof(ink32));
+    size_index = buffer_size_to_index(len + DATA_HDR + sizeof(ink32), MAX_BUFFER_SIZE_INDEX);
     iob_block = new_IOBufferBlock();
     iob_block->alloc(size_index);       // aligns on 8 byte boundary
     real_data = (ink64 *) iob_block->buf();

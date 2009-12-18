@@ -366,40 +366,6 @@ public:
     return NULL;
   }
 
-  /** Cache and cluster specific. */
-  virtual int get_object_size()
-  {
-    ink_debug_assert(!"get_object_size not implemented");
-    return 0;
-  }
-  virtual bool set_pin_in_cache(time_t time_pin)
-  {
-    (void) time_pin;
-    ink_debug_assert(!"set_pin_in_cache not implemented");
-    return false;
-  }
-  virtual time_t get_pin_in_cache()
-  {
-    ink_debug_assert(!"get_pin_in_cache not implemented");
-    return (time_t) 0;
-  }
-  virtual bool set_disk_io_priority(int priority)
-  {
-    (void) priority;
-    ink_debug_assert(!"set_disk_io_priority not implemented");
-    return false;
-  }
-  virtual int get_disk_io_priority()
-  {
-    ink_debug_assert(!"get_disk_io_priority not implemented");
-    return 0;
-  }
-  virtual bool is_ram_cache_hit()
-  {
-    ink_debug_assert(!"is_ram_cache_hit not implemented");
-    return 0;
-  }
-
 public:
 
   /**

@@ -38,12 +38,6 @@ typedef struct iovec IOVec;
 #define NET_MAX_IOV UIO_MAXIOV
 #endif
 
-#ifdef DEBUG
-// Initialize class UnixNetVConnection static data
-int
-  UnixNetVConnection::enable_debug_trace = 0;
-#endif
-
 // Global
 ClassAllocator<UnixNetVConnection> netVCAllocator("netVCAllocator");
 
@@ -852,14 +846,6 @@ UnixNetVConnection::set_enabled(VIO * vio)
   ink_debug_assert(vio->mutex->thread_holding == this_ethread());
   ink_assert(!closed);
   STATE_FROM_VIO(vio)->enabled = 1;
-#ifdef DEBUG
-  if (vio == &read.vio) {
-    if (enable_debug_trace && (vio->buffer.mbuf && !vio->buffer.writer()->write_avail()));
-  } else {
-    ink_assert(vio == &write.vio);
-    if (enable_debug_trace && (vio->buffer.mbuf && !vio->buffer.reader()->read_avail()));
-  }
-#endif
 #ifdef INACTIVITY_TIMEOUT
   if (!inactivity_timeout && inactivity_timeout_in)
     inactivity_timeout = vio->mutex->thread_holding->schedule_in_local(this, inactivity_timeout_in);

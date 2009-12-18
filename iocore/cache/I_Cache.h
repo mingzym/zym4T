@@ -128,8 +128,6 @@ struct CacheProcessor:public Processor
 
 struct CacheVConnection:public VConnection
 {
-  CacheVConnection();
-
   VIO *do_io_read(Continuation * c, int nbytes, MIOBuffer * buf) = 0;
   VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false) = 0;
   void do_io_close(int lerrno = -1) = 0;
@@ -141,13 +139,25 @@ struct CacheVConnection:public VConnection
     ink_assert(!"CacheVConnection::do_io_shutdown unsupported");
   }
 
+  virtual int get_header(void **ptr, int *len) = 0;
+  virtual int set_header(void *ptr, int len) = 0;
+  // do_io_pread() may only be issued once in response to CACHE_EVENT_OPEN_READ
+  virtual VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink_off_t off) = 0;
+
 #ifdef HTTP_CACHE
   virtual void set_http_info(CacheHTTPInfo * info) = 0;
   virtual void get_http_info(CacheHTTPInfo ** info) = 0;
 #endif
 
-  virtual bool is_ram_cache_hit() = 0;
   virtual Action *action() = 0;
+  virtual bool is_ram_cache_hit() = 0;
+  virtual bool set_disk_io_priority(int priority) = 0;
+  virtual int get_disk_io_priority() = 0;
+  virtual bool set_pin_in_cache(time_t t) = 0;
+  virtual time_t get_pin_in_cache() = 0;
+  virtual int get_object_size() = 0;
+
+  CacheVConnection();
 };
 
 void ink_cache_init(ModuleVersion version);

@@ -45,7 +45,7 @@ buffer_size_to_index(unsigned int size, int max = max_iobuffer_size)
 INK_INLINE int
 iobuffer_size_to_index(unsigned int size, int max)
 {
-  if (size > DEFAULT_MAX_BUFFER_SIZE) {
+  if (size > (unsigned int)BUFFER_SIZE_FOR_INDEX(max)) {
     ////////////////////////////////////////////////////
     // BUFFER_SIZE_INDEX_FOR_XMALLOC_SIZE returns the //
     // negative of its argument. The argument must be //
