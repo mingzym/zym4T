@@ -2,14 +2,7 @@
 #
 
 AM_CPPFLAGS = \
-  -I$(top_srcdir)/libinktomi++ \
-  -I$(top_srcdir)/iocore/eventsystem \
-  -I$(top_srcdir)/iocore/net \
-  -I$(top_srcdir)/iocore/cache \
-  -I$(top_srcdir)/iocore/aio \
-  -I$(top_srcdir)/iocore/utils \
-  -I$(top_srcdir)/iocore/cluster \
-  -I$(top_srcdir)/iocore/hostdb \
+  $(iocore_include_dirs) \
   -I$(top_srcdir)/librecords \
   -I$(top_srcdir)/proxy/http2 \
   -I$(top_srcdir)/proxy/hdrs \

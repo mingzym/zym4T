@@ -49,8 +49,8 @@ net_update_priority(NetHandler * nh, UnixNetVConnection * vc, NetState * ns, int
 
 
 //
-// Reschedule a UnixNetVConnection by placing the VC 
-// into ready_list or wait_list
+// Reschedule a UnixNetVConnection by moving VC 
+// onto or off of the ready_list
 //
 static inline void
 read_reschedule(NetHandler * nh, UnixNetVConnection * vc)
@@ -107,27 +107,10 @@ close_UnixNetVConnection(UnixNetVConnection * vc, EThread * t)
       vc->printLogs();
     vc->clearLogs();
   }
-
   vc->cancel_OOB();
-
-  PollDescriptor *pd = get_PollDescriptor(t);
-#if defined(USE_EPOLL)
-  struct epoll_event ev;
-  memset(&ev, 0, sizeof(struct epoll_event));
-  ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-  epoll_ctl(pd->epoll_fd, EPOLL_CTL_DEL, vc->con.fd, &ev);
-#elif defined(USE_KQUEUE)
-  struct kevent ev[2];
-  EV_SET(&ev[0], vc->con.fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-  EV_SET(&ev[1], vc->con.fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-  kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
-#else
-#error port me
-#endif
-
+  vc->ep.stop();
   socketManager.fast_close(vc->con.fd);
   vc->con.fd = NO_FD;
-
 #ifdef INACTIVITY_TIMEOUT
   if (vc->inactivity_timeout) {
     vc->inactivity_timeout->cancel_action(vc);
@@ -142,24 +125,18 @@ close_UnixNetVConnection(UnixNetVConnection * vc, EThread * t)
     vc->active_timeout = NULL;
   }
   vc->active_timeout_in = 0;
-
   NetHandler *nh = vc->nh;
   nh->open_list.remove(vc);
   nh->read_ready_list.remove(vc);
   nh->write_ready_list.remove(vc);
   if (vc->read.in_enabled_list) {
-    ink_assert(vc->closed);
-    ink_assert(nh->read_enable_list.remove(vc) == vc);
+    nh->read_enable_list.remove(vc);
     vc->read.in_enabled_list = 0;
   }
-  ink_assert(vc->read.enable_link.next == NULL);
   if (vc->write.in_enabled_list) {
-    ink_assert(vc->closed);
-    ink_assert(nh->write_enable_list.remove(vc) == vc);
+    nh->write_enable_list.remove(vc);
     vc->write.in_enabled_list = 0;
   }
-  ink_assert(vc->write.enable_link.next == NULL);
-
   vc->free(t);
 }
 
@@ -234,10 +211,10 @@ write_signal_error(NetHandler * nh, UnixNetVConnection * vc, int lerrno)
   return write_signal_done(VC_EVENT_ERROR, nh, vc);
 }
 
-// read the data for a UnixNetVConnection.
-// Rescheduling the UnixNetVConnection by placing the VC into 
-// ready_list (or) wait_list
-// Had to wrap this function with net_read_io to make SSL work..
+// Read the data for a UnixNetVConnection.
+// Rescheduling the UnixNetVConnection by moving the VC 
+// onto or off of the ready_list.
+// Had to wrap this function with net_read_io for SSL.
 static void
 read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
 {
@@ -253,7 +230,7 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
     vc->addLogMessage("can't get lock");
     return;
   }
-  // If it is not enabled.  
+  // if it is not enabled.  
   if (!s->enabled || s->vio.op != VIO::READ) {
     vc->addLogMessage("not enabled");
     read_disable(nh, vc);
@@ -262,39 +239,30 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
 
   ink_debug_assert(buf.writer());
 
-  // If there is nothing to do, disable connection
-  // and add into WaitList
-  int
-    ntodo = s->vio.ntodo();
+  // if there is nothing to do, disable connection
+  int ntodo = s->vio.ntodo();
   if (ntodo <= 0) {
     read_disable(nh, vc);
     return;
   }
-  // Calculate amount to read
-  int
-    toread = buf.writer()->write_avail();
+  int toread = buf.writer()->write_avail();
   if (toread > ntodo)
     toread = ntodo;
 
-  // Read data
-  int
-    rattempted = 0, total_read = 0;
-  int
-    niov = 0;
+  // read data
+  int rattempted = 0, total_read = 0;
+  int niov = 0;
   IOVec tiovec[NET_MAX_IOV];
   if (toread) {
-    IOBufferBlock *
-      b = buf.mbuf->_writer;
+    IOBufferBlock * b = buf.mbuf->_writer;
     do {
       niov = 0;
       rattempted = 0;
       while (b && niov < NET_MAX_IOV) {
-        int
-          a = b->write_avail();
+        int a = b->write_avail();
         if (a > 0) {
           tiovec[niov].iov_base = b->_end;
-          int
-            togo = toread - total_read - rattempted;
+          int togo = toread - total_read - rattempted;
           if (a > togo)
             a = togo;
           tiovec[niov].iov_len = a;
@@ -310,20 +278,17 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
       } else {
         r = socketManager.readv(vc->con.fd, &tiovec[0], niov);
       }
-      //ProxyMutex *mutex = thread->mutex;
       NET_DEBUG_COUNT_DYN_STAT(net_calls_to_read_stat, 1);
       total_read += rattempted;
     } while (r == rattempted && total_read < toread);
 
     if (vc->loggingEnabled()) {
-      char
-        message[256];
+      char message[256];
       snprintf(message, sizeof(message), "rval: %d toread: %d ntodo: %d total_read: %d", r, toread, ntodo, total_read);
       vc->addLogMessage(message);
     }
     // if we have already moved some bytes successfully, summarize in r
     if (total_read != rattempted) {
-
       if (r <= 0)
         r = total_read - rattempted;
       else
@@ -367,7 +332,6 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
       Debug("ssl", "read_from_net, read buffer full");
 #endif
     s->vio.ndone += r;
-
     net_activity(vc, thread);
   } else {
     r = 0;
@@ -519,7 +483,7 @@ write_to_net_io(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
       r = total_wrote - wattempted + r;
   }
   // check for errors
-  if (r <= 0) {                 // If the socket was not ready,add to WaitList
+  if (r <= 0) {                 // if the socket was not ready,add to WaitList
     if (r == -EAGAIN || r == -ENOTCONN) {
       NET_DEBUG_COUNT_DYN_STAT(net_calls_to_write_nodata_stat, 1);
       vc->write.triggered = 0;
@@ -996,33 +960,11 @@ UnixNetVConnection::acceptEvent(int event, Event * e)
 
   nh = get_NetHandler(thread);
   PollDescriptor *pd = get_PollDescriptor(thread);
-  ep.type = EPOLL_READWRITE_VC;
-  ep.data.vc = this;
-
-#if defined(USE_EPOLL)
-  struct epoll_event ev;
-  memset(&ev, 0, sizeof(struct epoll_event));
-
-  ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-  ev.data.ptr = &ep;
-  //printf("Added to epoll ctl fd %d and number is %d\n",con.fd,id);
-  if (epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, con.fd, &ev) < 0) {
-    Debug("iocore_net", "acceptEvent : Failed to add to epoll list\n");
+  if (ep.start(pd, this, EVENTIO_READ|EVENTIO_WRITE) < 0) {
+    Debug("iocore_net", "acceptEvent : failed EventIO::start\n");
     close_UnixNetVConnection(this, e->ethread);
     return EVENT_DONE;
   }
-#elif defined(USE_KQUEUE)
-  struct kevent ev[2];
-  EV_SET(&ev[0], con.fd, EVFILT_READ, EV_ADD, 0, 0, &ep);
-  EV_SET(&ev[1], con.fd, EVFILT_WRITE, EV_ADD, 0, 0, &ep);
-  if (kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL) < 0) {
-    Debug("iocore_net", "acceptEvent : Failed to add to kqueue list\n");
-    close_UnixNetVConnection(this, e->ethread);
-    return EVENT_DONE;
-  }
-#else
-#error port me
-#endif
 
   nh->open_list.enqueue(this);
 
@@ -1133,67 +1075,46 @@ UnixNetVConnection::connectUp(EThread * t)
   //
   int res = 0;
   Debug("arm_spoofing", "connectUp:: interface=%x and options.spoofip=%x\n", _interface, options.spoof_ip);
-  if (_interface || options.local_port || options.spoof_ip) {
-    // TODO move socketManager.socket() and epoll_ctl here too
-
+  nh = get_NetHandler(t);
+#ifndef USE_EDGE_TRIGGER
+  if (_interface || options.local_port || options.spoof_ip)
     res = con.bind_connect(ip, port, _interface, &options);
-  } else {
-    // we need to add the socket to the epoll fd before we call connect or we can miss an event
-    int socketFd = -1;
-    if ((socketFd = socketManager.socket(AF_INET, SOCK_STREAM, 0)) >= 0) {
-
-      // this should be moved into a PollDescriptor method
-      nh = get_NetHandler(t);
-      PollDescriptor *pd = get_PollDescriptor(t);
-
-      ep.type = EPOLL_READWRITE_VC;
-      ep.data.vc = this;
-
-#if defined(USE_EPOLL)
-      struct epoll_event ev;
-      memset(&ev, 0, sizeof(struct epoll_event));
-      ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-      ev.data.ptr = &ep;
-      int rval = epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, socketFd, &ev);
-      if (rval != 0) {
-        lerrno = errno;
-        Debug("iocore_net", "connectUp : Failed to add to epoll list\n");
-        action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *)(intptr_t)rval);
-        free(t);
-        return CONNECT_FAILURE;
-      }
-#elif defined(USE_KQUEUE)
-      struct kevent ev[2];
-      EV_SET(&ev[0], socketFd, EVFILT_READ, EV_ADD, 0, 0, &ep);
-      EV_SET(&ev[1], socketFd, EVFILT_WRITE, EV_ADD, 0, 0, &ep);
-      int rval = kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
-      if (rval < 0) {
-        lerrno = errno;
-        Debug("iocore_net", "connectUp : Failed to add to kqueue list\n");
-        action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *)(intptr_t)rval);
-        free(t);
-        return CONNECT_FAILURE;
-      }
+  else
+    res = con.fast_connect(ip, port, &options);
 #else
-#error port me
+  int sock = -1;
+  if ((sock = socketManager.socket(AF_INET, SOCK_STREAM, 0)) < 0)
+    goto Lfailure;
+  con.fd = sock;
 #endif
-      res = con.fast_connect(ip, port, &options, socketFd);
-    } else {
-      res = socketFd;
-    }
+  if (ep.start(get_PollDescriptor(t), this, EVENTIO_READ|EVENTIO_WRITE) < 0) {
+    lerrno = errno;
+    Debug("iocore_net", "connectUp : Failed to add to epoll list\n");
+    action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *) res);
+    free(t);
+    return CONNECT_FAILURE;
   }
+#ifdef USE_EDGE_TRIGGER
+  // must be called after EventIO::start() to avoid race with edge triggering
+  if (_interface || options.local_port || options.spoof_ip)
+    res = con.bind_connect(ip, port, _interface, &options, sock);
+  else
+    res = con.fast_connect(ip, port, &options, sock);
+#endif
   if (res) {
+#ifdef USE_EDGE_TRIGGER
+  Lfailure:
+#endif
     lerrno = errno;
     action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *)(intptr_t)res);
     free(t);
     return CONNECT_FAILURE;
   }
-
   check_emergency_throttle(con);
 
   // start up next round immediately
 
-  SET_HANDLER((NetVConnHandler) & UnixNetVConnection::mainEvent);
+  SET_HANDLER(&UnixNetVConnection::mainEvent);
   // This function is empty for regular UnixNetVConnection, it has code
   // in it for the inherited SSLUnixNetVConnection.  Allows the connectUp 
   // function code not to be duplicated in the inherited SSL class.
@@ -1202,38 +1123,13 @@ UnixNetVConnection::connectUp(EThread * t)
   if (_interface || options.local_port || options.spoof_ip) {
     nh = get_NetHandler(t);
     PollDescriptor *pd = get_PollDescriptor(t);
-
-    ep.type = EPOLL_READWRITE_VC;
-    ep.data.vc = this;
-
-#if defined(USE_EPOLL)
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof(struct epoll_event));
-    ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-    ev.data.ptr = &ep;
-    res = epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, con.fd, &ev);
-    if (res < 0) {
+    if (ep.start(pd, this, EVENTIO_READ|EVENTIO_WRITE) < 0) {
       Debug("iocore_net", "connectUp : Failed to add to epoll list\n");
       lerrno = errno;
       action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *)(intptr_t)res);
       free(t);
       return CONNECT_FAILURE;
     }
-#elif defined(USE_KQUEUE)
-    struct kevent ev[2];
-    EV_SET(&ev[0], con.fd, EVFILT_READ, EV_ADD, 0, 0, &ep);
-    EV_SET(&ev[1], con.fd, EVFILT_WRITE, EV_ADD, 0, 0, &ep);
-    res = kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
-    if (res < 0) {
-      lerrno = errno;
-      Debug("iocore_net", "connectUp : Failed to add to kqueue list\n");
-      action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *)(intptr_t)res);
-      free(t);
-      return CONNECT_FAILURE;
-    }
-#else
-#error port me
-#endif
   }
 
   nh->open_list.enqueue(this);
@@ -1263,6 +1159,7 @@ UnixNetVConnection::free(EThread * t)
   read.triggered = 0;
   write.triggered = 0;
   options.reset();
+  closed = 0;
   ink_debug_assert(!read.ready_link.prev && !read.ready_link.next);
   ink_debug_assert(!read.enable_link.next);
   ink_debug_assert(!write.ready_link.prev && !write.ready_link.next);
@@ -1271,6 +1168,5 @@ UnixNetVConnection::free(EThread * t)
   ink_debug_assert(!active_timeout);
   ink_debug_assert(con.fd == NO_FD);
   ink_debug_assert(t == this_ethread());
-  closed = 0;
   THREAD_FREE(this, netVCAllocator, t);
 }

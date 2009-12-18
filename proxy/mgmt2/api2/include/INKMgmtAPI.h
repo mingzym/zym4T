@@ -57,8 +57,10 @@
 
 #if defined (__SUNPRO_CC) || (defined (__GNUC__) || ! defined(__cplusplus))
 
+#if (HOST_OS != darwin)
 #if !defined (bool)
 #define bool int
+#endif
 #endif
 
 #if !defined (true)

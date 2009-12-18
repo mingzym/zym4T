@@ -53,6 +53,9 @@
 #define NIC_IDENTIFIER_STRING "eth0"
 #define NIC_CHANGES_STRING "Changes Take Effect Immediately"
 #define NIC_SETTINGS_EXECUTABLE INKTOMI_HOME "/rubicon/bin/mii-diag"
+#elif (HOST_OS == darwin)
+#define DEFAULTROUTER_PATH "/tmp/tsrouterpath-fixme" // FIXME:
+#define GATEWAY_MARKER "GATEWAY=" // FIXME:
 #endif
 
 #define NAMESERVER_PATH "/etc/resolv.conf"
@@ -105,6 +108,8 @@
 #define TIMEZONE_FILE "/etc/default/init"
 #elif (HOST_OS == linux)
 #define TIMEZONE_FILE "/etc/sysconfig/clock"
+#elif (HOST_OS == darwin)
+#define TIMEZONE_FILE "/tmp/tstzonefile-fixme" // FIXME:
 #else
 #error No file set for this OS.
 #endif

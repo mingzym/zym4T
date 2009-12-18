@@ -204,7 +204,7 @@ public:
   ink_hrtime next_inactivity_timeout_at;
 #endif
   Event *active_timeout;
-  struct epoll_data_ptr ep;
+  EventIO ep;
   NetHandler *nh;
   unsigned int id;
   unsigned int ip;
@@ -352,10 +352,7 @@ UnixNetVConnection()
 // declarations for local use (within the net module)
 
 void close_UnixNetVConnection(UnixNetVConnection * vc, EThread * t);
-
-
 void write_to_net(NetHandler * nh, UnixNetVConnection * vc, PollDescriptor * pd, EThread * thread);
-
 void write_to_net_io(NetHandler * nh, UnixNetVConnection * vc, EThread * thread);
 
 #endif

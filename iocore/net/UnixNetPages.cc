@@ -159,7 +159,7 @@ struct ShowNet:ShowCont
     forl_LL(UnixNetVConnection, vc, nh->open_list)
       connections++;
     CHECK_SHOW(show("<tr><td>%s</td><td>%d</td></tr>\n", "Connections", connections));
-    CHECK_SHOW(show("<tr><td>%s</td><td>%d</td></tr>\n", "Last Poll Size", pollDescriptor->nfds));
+    //CHECK_SHOW(show("<tr><td>%s</td><td>%d</td></tr>\n", "Last Poll Size", pollDescriptor->nfds));
     CHECK_SHOW(show("<tr><td>%s</td><td>%d</td></tr>\n", "Last Poll Ready", pollDescriptor->result));
     CHECK_SHOW(show("</table>\n"));
     CHECK_SHOW(show("<table border=1>\n"));

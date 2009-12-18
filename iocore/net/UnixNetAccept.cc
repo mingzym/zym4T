@@ -149,57 +149,10 @@ net_accept_main_blocking(NetAccept * na, Event * e, bool blockable)
   (void) blockable;
   (void) e;
 
-  struct PollDescriptor *epd = (PollDescriptor *) xmalloc(sizeof(PollDescriptor));
-  epd->init();
-
-  //added by vijay - bug 2237131 
-  struct epoll_data_ptr ep;
-  ep.type = EPOLL_NETACCEPT; // NetAccept
-  ep.data.na = na;
-#if defined(USE_EPOLL)
-  struct epoll_event ev;
-  memset(&ev, 0, sizeof(ev));
-  ev.events = EPOLLIN | EPOLLET;
-  ev.data.ptr = &ep;
-  if (epoll_ctl(epd->epoll_fd, EPOLL_CTL_ADD, na->server.fd, &ev) < 0) {
-    Debug("iocore_net", "init_accept_loop : Error in epoll_ctl\n");
-  }
-#elif defined(USE_KQUEUE)
-  struct kevent ev;
-  EV_SET(&ev, na->server.fd, EVFILT_READ, EV_ADD, 0, 0, &ep);
-  if (kevent(epd->kqueue_fd, &ev, 1, NULL, 0, NULL) < 0) {
-    Debug("iocore_net", "init_accept_loop : Error in kevent\n");
-  }
-#else
-#error port me
-#endif
   EThread *t = this_ethread();
-  NetAccept *net_accept = NULL;
 
-  while (1) {
-    epd->nfds = 0;
-#if defined(USE_EPOLL)
-    epd->result = epoll_wait(epd->epoll_fd, epd->ePoll_Triggered_Events,
-                             POLL_DESCRIPTOR_SIZE, ACCEPT_THREAD_POLL_TIMEOUT);
-#elif defined(USE_KQUEUE)
-    struct timespec tv;
-    tv.tv_sec = 0;
-    tv.tv_nsec = 1000000 * ACCEPT_THREAD_POLL_TIMEOUT;
-    epd->result = kevent(epd->kqueue_fd, NULL, 0,
-                         epd->kq_Triggered_Events, POLL_DESCRIPTOR_SIZE,
-                         &tv);
-#endif
-    for (int x = 0; x < epd->result; x++) {
-      if (get_ev_events(epd,x) & INK_EVP_IN) {
-        struct epoll_data_ptr *temp_eptr = (epoll_data_ptr *)get_ev_data(epd,x);
-        if (temp_eptr)
-          net_accept = temp_eptr->data.na;
-        if (net_accept) {
-          net_accept->do_blocking_accept(na, t);
-        }
-      }
-    }
-  }
+  while (1)
+    na->do_blocking_accept(na, t);
   return -1;
 }
 
@@ -236,15 +189,12 @@ EventType NetAccept::getEtype()
 void
 NetAccept::init_accept_loop()
 {
-
-  //modified by vijay - bug 2237131  
   if (!action_->continuation->mutex) {
     action_->continuation->mutex = new_ProxyMutex();
     action_->mutex = action_->continuation->mutex;
   }
   do_listen(BLOCKING);
   unix_netProcessor.accepts_on_thread.push(this);
-
   SET_CONTINUATION_HANDLER(this, &NetAccept::acceptLoopEvent);
   eventProcessor.spawn_thread(this);
 }
@@ -296,29 +246,9 @@ NetAccept::init_accept_per_thread()
     } else
       a = this;
     EThread *t = eventProcessor.eventthread[ET_NET][i];
-
     PollDescriptor *pd = get_PollDescriptor(t);
-    ep.type = EPOLL_NETACCEPT;
-    ep.data.na = a;
-
-#if defined(USE_EPOLL)
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof(struct epoll_event));
-    ev.events = EPOLLIN | EPOLLET;
-    ev.data.ptr = &ep;
-
-    if (epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, a->server.fd, &ev) < 0) {
-      Debug("iocore_net", "init_accept_per_thread : Error in epoll_ctl\n");
-    }
-#elif defined(USE_KQUEUE)
-    struct kevent ev;
-    EV_SET(&ev, a->server.fd, EVFILT_READ, EV_ADD, 0, 0, &ep);
-    if (kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL) < 0) {
-      Debug("iocore_net", "init_accept_per_thread : Error in kevent\n");
-    }
-#else
-#error port me
-#endif
+    if (a->ep.start(pd, a, EVENTIO_READ) < 0)
+      Debug("iocore_net", "error starting EventIO");
     a->mutex = get_NetHandler(t)->mutex;
     t->schedule_every(a, period, etype);
   }
@@ -400,7 +330,6 @@ NetAccept::do_blocking_accept(NetAccept * master_na, EThread * t)
     master_na->alloc_cache = NULL;
 
     RecIncrGlobalRawStatSum(net_rsb, net_connections_currently_open_stat, 1);
-    vc->closed = 0;
     vc->submit_time = now;
     vc->ip = vc->con.sa.sin_addr.s_addr;
     vc->port = ntohs(vc->con.sa.sin_port);
@@ -418,53 +347,39 @@ NetAccept::do_blocking_accept(NetAccept * master_na, EThread * t)
 int
 NetAccept::acceptEvent(int event, void *ep)
 {
-  Event *e = (Event *) ep;
   (void) event;
-  PollDescriptor *pd = get_PollDescriptor(e->ethread);
-  int res;
-  ProxyMutex *m;
+  Event *e = (Event *) ep;
+  //PollDescriptor *pd = get_PollDescriptor(e->ethread);
+  ProxyMutex *m = 0;
 
-  //bz54821. Migrated from traffic_tsunami
-  //-deepakk
   if (action_->mutex)
     m = action_->mutex;
   else
     m = mutex;
-
   MUTEX_TRY_LOCK(lock, m, e->ethread);
-  if (!lock)
-    goto acceptEvent_poll;
-
-  if (action_->cancelled) {
-    e->cancel();
-    NET_DECREMENT_DYN_STAT(net_accepts_currently_open_stat);
-    delete this;
-    return EVENT_DONE;
-  }
-
-  ink_debug_assert(ifd < 0 || event == EVENT_INTERVAL ||
-                   (ifd_seq_num == pd->seq_num && pd->nfds > ifd && pd->pfd[ifd].fd == server.fd));
-  if (ifd < 0 || event == EVENT_INTERVAL || (pd->pfd[ifd].revents & (POLLIN | POLLERR | POLLHUP | POLLNVAL))) {
-    if ((res = accept_fn(this, e, false)) < 0) {
-      NET_DECREMENT_DYN_STAT(net_accepts_currently_open_stat);
-      /* INKqa11179 */
-      Warning("Accept on port %d failed with error no %d", ntohs(server.sa.sin_port), res);
-      Warning("Traffic Server may be unable to accept more network" "connections on %d", ntohs(server.sa.sin_port));
+  if (lock) {
+    if (action_->cancelled) {
       e->cancel();
+      NET_DECREMENT_DYN_STAT(net_accepts_currently_open_stat);
       delete this;
       return EVENT_DONE;
     }
+
+    //ink_debug_assert(ifd < 0 || event == EVENT_INTERVAL || (pd->nfds > ifd && pd->pfd[ifd].fd == server.fd));
+    //if (ifd < 0 || event == EVENT_INTERVAL || (pd->pfd[ifd].revents & (POLLIN | POLLERR | POLLHUP | POLLNVAL))) {
+    ink_debug_assert(!"incomplete");
+      int res;
+      if ((res = accept_fn(this, e, false)) < 0) {
+        NET_DECREMENT_DYN_STAT(net_accepts_currently_open_stat);
+        /* INKqa11179 */
+        Warning("Accept on port %d failed with error no %d", ntohs(server.sa.sin_port), res);
+        Warning("Traffic Server may be unable to accept more network" "connections on %d", ntohs(server.sa.sin_port));
+        e->cancel();
+        delete this;
+        return EVENT_DONE;
+      }
+      //}
   }
-  //bz54821. Migrated from traffic_tsunami
-  //-deepakk
-acceptEvent_poll:
-  /*Pollfd *pfd = npd->alloc();
-     ifd = pfd - npd->pfd;
-     ink_debug_assert(npd->nfds > ifd);
-     ifd_seq_num = npd->seq_num;
-     pfd->fd = server.fd;
-     pfd->events = POLLIN;
-     pfd->revents = 0; */
   return EVENT_CONT;
 }
 
@@ -476,6 +391,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
   (void) event;
   (void) e;
   int bufsz, res;
+
   PollDescriptor *pd = get_PollDescriptor(e->ethread);
   UnixNetVConnection *vc = NULL;
   int loop = accept_till_done;
@@ -495,7 +411,6 @@ NetAccept::acceptFastEvent(int event, void *ep)
     if (likely(fd >= 0)) {
       vc->addLogMessage("accepting the connection");
 
-      //printf("************* Send buffer size: %d ***************\n",send_bufsize);
       Debug("epoll", "accepted a new socket: %d", fd);
       if (send_bufsize > 0) {
         if (unlikely(socketManager.set_sndbuf_size(fd, send_bufsize))) {
@@ -507,7 +422,6 @@ NetAccept::acceptFastEvent(int event, void *ep)
           }
         }
       }
-      //printf("************* Receive buffer size: %d ***************\n",recv_bufsize);
       if (recv_bufsize > 0) {
         if (unlikely(socketManager.set_rcvbuf_size(fd, recv_bufsize))) {
           bufsz = ROUNDUP(recv_bufsize, 1024);
@@ -552,7 +466,6 @@ NetAccept::acceptFastEvent(int event, void *ep)
         action_->continuation->handleEvent(EVENT_ERROR, (void *) res);
       goto Lerror;
     }
-    vc->closed = 0;
     vc->con.fd = fd;
 
     NET_INCREMENT_DYN_STAT(net_connections_currently_open_stat);
@@ -569,32 +482,11 @@ NetAccept::acceptFastEvent(int event, void *ep)
 
     SET_CONTINUATION_HANDLER(vc, (NetVConnHandler) & UnixNetVConnection::mainEvent);
 
-    vc->ep.type = EPOLL_READWRITE_VC;
-    vc->ep.data.vc = vc;
-
-#if defined(USE_EPOLL)
-    struct epoll_event ev;
-    memset(&ev, 0, sizeof(struct epoll_event));
-    ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-    ev.data.ptr = &vc->ep;
-
-    if (epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, vc->con.fd, &ev) < 0) {
-      Debug("iocore_net", "acceptFastEvent : Error in inserting fd[%d] in epoll_list\n", vc->con.fd);
-      close_UnixNetVConnection(vc, e->ethread);
-      return EVENT_DONE;
-    }
-#elif defined(USE_KQUEUE)
-    struct kevent ev[2];
-    EV_SET(&ev[0], vc->con.fd, EVFILT_READ, EV_ADD, 0, 0, &vc->ep);
-    EV_SET(&ev[1], vc->con.fd, EVFILT_WRITE, EV_ADD, 0, 0, &vc->ep);
-    if (kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL) < 0) {
+    if (vc->ep.start(pd, vc, EVENTIO_READ|EVENTIO_WRITE) < 0) {
       Debug("iocore_net", "acceptFastEvent : Error in inserting fd[%d] in kevent\n", vc->con.fd);
       close_UnixNetVConnection(vc, e->ethread);
       return EVENT_DONE;
     }
-#else
-#error port me
-#endif
 
     vc->nh->open_list.enqueue(vc);
 
@@ -649,7 +541,7 @@ Continuation(NULL),
 port(0),
 period(0),
 alloc_cache(0),
-ifd(-1), ifd_seq_num(-1), callback_on_open(false), recv_bufsize(0), send_bufsize(0), sockopt_flags(0), etype(0)
+ifd(-1), callback_on_open(false), recv_bufsize(0), send_bufsize(0), sockopt_flags(0), etype(0)
 {
 }
 

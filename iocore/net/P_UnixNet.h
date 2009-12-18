@@ -27,31 +27,105 @@
 #include <stdarg.h>
 #include "List.h"
 
+#define USE_EDGE_TRIGGER_EPOLL  1
+
+#ifdef USE_LIBEV
+#define EV_MINPRI 0
+#define EV_MAXPRI 0
+#include "ev.h"
+typedef void (*eio_cb_t)(struct ev_loop*, struct ev_io*, int);
+// expose libev internals
+#define NUMPRI (EV_MAXPRI - EV_MINPRI + 1)
+typedef void ANFD;
+typedef struct {
+  ev_watcher *w;
+  int events;
+} ANPENDING;
+typedef void ANHE;
+typedef ev_watcher *W;
+struct ev_loop
+{
+  ev_tstamp ev_rt_now;
+#define ev_rt_now ((loop)->ev_rt_now)
+#define VAR(name,decl) decl;
+#include "ev_vars.h"
+#undef VAR
+};
+#endif
+
+class PollDescriptor;
+typedef PollDescriptor *EventLoop;
+
 class UnixNetVConnection;
 class DNSConnection;
 class NetAccept;
 class UnixUDPConnection;
-struct epoll_data_ptr
+struct EventIO
 {
+#ifdef USE_LIBEV
+  ev_io eio;
+#else
+  int fd;
+#endif
+  EventLoop event_loop;
   int type;
   union
   {
+    Continuation *c;
     UnixNetVConnection *vc;
     DNSConnection *dnscon;
     NetAccept *na;
     UnixUDPConnection *uc;
   } data;
+  int start(EventLoop l, DNSConnection *vc, int events);
+  int start(EventLoop l, NetAccept *vc, int events);
+  int start(EventLoop l, UnixNetVConnection *vc, int events);
+  int start(EventLoop l, UnixUDPConnection *vc, int events);
+  int start(EventLoop l, int fd, Continuation *c, int events);
+  int stop();
+  int close();
+  EventIO() { 
+#ifndef USE_LIBEV
+    fd = 0;
+#endif
+    type = 0;
+    data.c = 0;
+  }
 };
 
 #include "P_UnixNetProcessor.h"
 #include "P_UnixNetVConnection.h"
 #include "P_NetAccept.h"
 #include "P_DNSConnection.h"
+#include "P_UnixUDPConnection.h"
+#include "P_UnixPollDescriptor.h"
 
-#define EPOLL_NETACCEPT			1
-#define EPOLL_READWRITE_VC		2
-#define EPOLL_DNS_CONNECTION		3
-#define EPOLL_UDP_CONNECTION		4
+#define EVENTIO_NETACCEPT               1
+#define EVENTIO_READWRITE_VC		2
+#define EVENTIO_DNS_CONNECTION		3
+#define EVENTIO_UDP_CONNECTION		4
+
+#if defined(USE_LIBEV)
+#define EVENTIO_READ EV_READ
+#define EVENTIO_WRITE EV_WRITE
+#define EVENTIO_ERROR EV_ERROR
+#elif defined(USE_EPOLL)
+#ifdef USE_EDGE_TRIGGER_EPOLL
+#define USE_EDGE_TRIGGER 1
+#define EVENTIO_READ (EPOLLIN|EPOLLET)
+#define EVENTIO_WRITE (EPOLLOUT|EPOLLET)
+#else
+#define EVENTIO_READ EPOLLIN
+#define EVENTIO_WRITE EPOLLOUT
+#endif
+#define EVENTIO_ERROR (EPOLLERR|EPOLLPRI|EPOLLHUP)
+#elif defined(USE_KQUEUE)
+#define EVENTIO_READ EVFILT_READ
+#define EVENTIO_READ EVFILT_WRITE
+#define EVENTIO_ERROR (0x010|0x002|0x020) // ERR PRI HUP
+#else
+#error port me
+#endif
 
 struct UnixNetVConnection;
 struct NetHandler;
@@ -137,7 +211,6 @@ class NetHandler:public Continuation
 {
 public:
   Event *trigger_event;
-
   Que(UnixNetVConnection, read.ready_link) read_ready_list;
   Que(UnixNetVConnection, write.ready_link) write_ready_list;
   Que(UnixNetVConnection, link) open_list;
@@ -149,9 +222,6 @@ public:
   int mainNetEvent(int event, Event * data);
   int mainNetEventExt(int event, Event * data);
   void process_enabled_list(NetHandler *, EThread *);
-  PollDescriptor *build_poll(PollDescriptor * pd);
-  PollDescriptor *build_one_read_poll(int fd, UnixNetVConnection *, PollDescriptor * pd);
-  PollDescriptor *build_one_write_poll(int fd, UnixNetVConnection *, PollDescriptor * pd);
 
   NetHandler();
 };
@@ -382,6 +452,95 @@ write_disable(NetHandler * nh, UnixNetVConnection * vc)
   vc->write.enabled = 0;
   nh->write_ready_list.remove(vc);
 }
+
+inline int EventIO::start(EventLoop l, DNSConnection *vc, int events) {
+  type = EVENTIO_DNS_CONNECTION;
+  return start(l, vc->fd, (Continuation*)vc, events);
+}
+inline int EventIO::start(EventLoop l, NetAccept *vc, int events) {
+  type = EVENTIO_NETACCEPT;
+  return start(l, vc->server.fd, (Continuation*)vc, events);
+}
+inline int EventIO::start(EventLoop l, UnixNetVConnection *vc, int events) {
+  type = EVENTIO_READWRITE_VC;
+  return start(l, vc->con.fd, (Continuation*)vc, events);
+}
+inline int EventIO::start(EventLoop l, UnixUDPConnection *vc, int events) {
+  type = EVENTIO_UDP_CONNECTION;
+  return start(l, vc->fd, (Continuation*)vc, events);
+}
+inline int EventIO::close() {
+  stop();
+  switch (type) {
+    default: assert(!"case");
+    case EVENTIO_DNS_CONNECTION: return data.dnscon->close(); break;
+    case EVENTIO_NETACCEPT: return data.na->server.close(); break;
+    case EVENTIO_READWRITE_VC: return data.vc->con.close(); break;
+  }
+  return -1;
+}
+
+#ifdef USE_LIBEV
+
+inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
+  event_loop = l;
+  data.c = c;
+  ev_init(&eio, (eio_cb_t)this);
+  ev_io_set(&eio, afd, e);
+  ev_io_start(l->eio, &eio);
+  return 0;
+}
+
+inline int EventIO::stop() {
+  if (event_loop) {
+    ev_io_stop(event_loop->eio, &eio);
+    event_loop = 0;
+  }
+  return 0;
+}
+
+#else
+
+inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
+  data.c = c;
+  fd = afd;
+  event_loop = l;
+#if defined(USE_EPOLL)
+  struct epoll_event ev;
+  memset(&ev, 0, sizeof(ev));
+  ev.events = e;
+  ev.data.ptr = this;
+  return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_ADD, fd, &ev);
+#elif defined(USE_KQUEUE)
+    struct kevent ev;
+    EV_SET(&ev, con[icon].fd, EVFILT_READ, EV_ADD, 0, 0, con[icon].epoll_ptr);
+    r = kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL);
+#else
+#error port me
+#endif
+}
+
+inline int EventIO::stop() {
+  if (event_loop) {
+#if defined(USE_EPOLL)
+    struct epoll_event ev;
+    memset(&ev, 0, sizeof(struct epoll_event));
+    ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
+    return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_DEL, fd, &ev);
+#elif defined(USE_KQUEUE)
+    struct kevent ev[2];
+    EV_SET(&ev[0], con[icon].fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
+    EV_SET(&ev[1], con[icon].fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
+    kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
+#else
+#error port me
+#endif
+    event_loop = 0;
+  }
+  return 0;
+}
+
+#endif
 
 
 #ifndef INACTIVITY_TIMEOUT

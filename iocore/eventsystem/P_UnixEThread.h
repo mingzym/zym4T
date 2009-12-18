@@ -50,9 +50,6 @@ EThread::schedule_imm(Continuation * cont, int callback_event, void *cookie)
   Event *e =::eventAllocator.alloc();
   e->callback_event = callback_event;
   e->cookie = cookie;
-#ifdef ENABLE_TIME_TRACE
-  e->start_time = ink_get_hrtime();
-#endif
   return schedule(e->init(cont, 0, 0));
 }
 
@@ -102,9 +99,6 @@ EThread::schedule_imm_local(Continuation * cont, int callback_event, void *cooki
 {
   Event *e = EVENT_ALLOC(eventAllocator, this);
   e->callback_event = callback_event;
-#ifdef ENABLE_TIME_TRACE
-  e->start_time = ink_get_hrtime();
-#endif
   e->cookie = cookie;
   return schedule_local(e->init(cont, 0, 0));
 }

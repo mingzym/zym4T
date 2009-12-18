@@ -31,11 +31,12 @@ int fds_throttle;
 int fds_limit = 8000;
 ink_hrtime last_transient_accept_error;
 
+extern "C" void fd_reify(struct ev_loop *);
+
 PollCont::PollCont(ProxyMutex * m):Continuation(m), net_handler(NULL), poll_timeout(REAL_DEFAULT_EPOLL_TIMEOUT)
 {
   pollDescriptor = NEW(new PollDescriptor);
   pollDescriptor->init();
-  pollDescriptor->seq_num = 0;
   SET_HANDLER(&PollCont::pollEvent);
 }
 
@@ -44,7 +45,6 @@ poll_timeout(REAL_DEFAULT_EPOLL_TIMEOUT)
 {
   pollDescriptor = NEW(new PollDescriptor);
   pollDescriptor->init();
-  pollDescriptor->seq_num = 0;
   SET_HANDLER(&PollCont::pollEvent);
 }
 
@@ -78,7 +78,12 @@ PollCont::pollEvent(int event, Event * e)
     }
   }
   // wait for fd's to tigger, or don't wait if timeout is 0
-#if defined(USE_EPOLL)
+#if defined(USE_LIBEV)
+  struct ev_loop *eio = pollDescriptor->eio;
+  fd_reify(eio);
+  eio->backend_poll(eio, (double)poll_timeout/1000.0);
+  pollDescriptor->result = eio->pendingcnt[0];
+#elif defined(USE_EPOLL)
   pollDescriptor->result = epoll_wait(pollDescriptor->epoll_fd,
                                       pollDescriptor->ePoll_Triggered_Events, POLL_DESCRIPTOR_SIZE, poll_timeout);
   Debug("epoll", "[PollCont::pollEvent] epoll_fd: %d, timeout: %d, results: %d", pollDescriptor->epoll_fd, poll_timeout,
@@ -118,6 +123,14 @@ initialize_thread_for_net(EThread * thread, int thread_index)
   new((ink_dummy_for_new *) get_NetHandler(thread)) NetHandler();
   new((ink_dummy_for_new *) get_PollCont(thread)) PollCont(thread->mutex, get_NetHandler(thread));
   get_NetHandler(thread)->mutex = new_ProxyMutex();
+#if defined(USE_LIBEV)
+  PollCont *pc = get_PollCont(thread);
+  PollDescriptor *pd = pc->pollDescriptor;
+  if (!thread_index)
+    pd->eio = ev_default_loop(0);
+  else
+    pd->eio = ev_loop_new(0);
+#endif
   thread->schedule_imm(get_NetHandler(thread));
 
 #ifndef INACTIVITY_TIMEOUT
@@ -170,6 +183,7 @@ NetHandler::process_enabled_list(NetHandler * nh, EThread * t)
   }
 }
 
+
 //
 // The main event for NetHandler
 // This is called every NET_PERIOD, and handles all IO operations scheduled
@@ -181,7 +195,7 @@ NetHandler::mainNetEvent(int event, Event * e)
   ink_assert(trigger_event == e && (event == EVENT_INTERVAL || event == EVENT_POLL));
   (void) event;
   (void) e;
-  struct epoll_data_ptr *epd = NULL;
+  EventIO *epd = NULL;
   int poll_timeout = REAL_DEFAULT_EPOLL_TIMEOUT;
 
   NET_INCREMENT_DYN_STAT(net_handler_run_stat);
@@ -195,7 +209,12 @@ NetHandler::mainNetEvent(int event, Event * e)
 
   PollDescriptor *pd = get_PollDescriptor(trigger_event->ethread);
   UnixNetVConnection *vc = NULL;
-#if defined(USE_EPOLL)
+#if defined(USE_LIBEV)
+  struct ev_loop *eio = pd->eio;
+  fd_reify(eio);
+  eio->backend_poll(eio, (double)poll_timeout/1000.0);
+  pd->result = eio->pendingcnt[0];
+#elif defined(USE_EPOLL)
   pd->result = epoll_wait(pd->epoll_fd, pd->ePoll_Triggered_Events, POLL_DESCRIPTOR_SIZE, poll_timeout);
 #elif defined(USE_KQUEUE)
   struct timespec tv;
@@ -210,42 +229,41 @@ NetHandler::mainNetEvent(int event, Event * e)
 #endif
 
   vc = NULL;
-
   for (int x = 0; x < pd->result; x++) {
-    epd = (struct epoll_data_ptr *) get_ev_data(pd,x);
-    if (epd->type == EPOLL_READWRITE_VC) {
+    epd = (EventIO*) get_ev_data(pd,x);
+    if (epd->type == EVENTIO_READWRITE_VC) {
       vc = epd->data.vc;
-      if (get_ev_events(pd,x) & (INK_EVP_IN)) {
+      if (get_ev_events(pd,x) & (EVENTIO_READ)) {
         vc->read.triggered = 1;
         vc->addLogMessage("read triggered");
         if ((vc->read.enabled || vc->closed) && !read_ready_list.in(vc))
           read_ready_list.enqueue(vc);
-        else if (get_ev_events(pd,x) & (INK_EVP_PRI | INK_EVP_HUP | INK_EVP_ERR)) {
+        else if (get_ev_events(pd,x) & EVENTIO_ERROR) {
           // check for unhandled epoll events that should be handled
           Debug("epoll_miss", "Unhandled epoll event on read: 0x%04x read.enabled=%d closed=%d read.netready_queue=%d",
                 get_ev_events(pd,x), vc->read.enabled, vc->closed, read_ready_list.in(vc));
         }
       }
       vc = epd->data.vc;
-      if (get_ev_events(pd,x) & (INK_EVP_OUT)) {
+      if (get_ev_events(pd,x) & EVENTIO_WRITE) {
         vc->write.triggered = 1;
         vc->addLogMessage("write triggered");
         if ((vc->write.enabled || vc->closed) && !write_ready_list.in(vc))
           write_ready_list.enqueue(vc);
-        else if (get_ev_events(pd,x) & (INK_EVP_PRI | INK_EVP_HUP | INK_EVP_ERR)) {
+        else if (get_ev_events(pd,x) & EVENTIO_ERROR) {
           // check for unhandled epoll events that should be handled
           Debug("epoll_miss",
                 "Unhandled epoll event on write: 0x%04x write.enabled=%d closed=%d write.netready_queue=%d",
                 get_ev_events(pd,x), vc->write.enabled, vc->closed, write_ready_list.in(vc));
         }
-      } else if (!(get_ev_events(pd,x) & (INK_EVP_IN)) &&
-                 get_ev_events(pd,x) & (INK_EVP_PRI | INK_EVP_HUP | INK_EVP_ERR)) {
+      } else if (!(get_ev_events(pd,x) & EVENTIO_READ) && get_ev_events(pd,x) & EVENTIO_ERROR) {
         Debug("epoll_miss", "Unhandled epoll event: 0x%04x", get_ev_events(pd,x));
       }
-    } else if (epd->type == EPOLL_DNS_CONNECTION) {
+    } else if (epd->type == EVENTIO_DNS_CONNECTION) {
       if (epd->data.dnscon != NULL)
         dnsqueue.enqueue(epd->data.dnscon);
     }
+    ev_next_event(pd);
   }
 
   pd->result = 0;

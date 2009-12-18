@@ -17,11 +17,14 @@ AM_CPPFLAGS = \
 MGMT_DEFS = @MGMT_DEFS@
 DEFS  += $(MGMT_DEFS)
 
-noinst_LIBRARIES = libmgmtapiremote.a 
+##noinst_LIBRARIES = libmgmtapiremote.la 
+##noinst_LTLIBRARIES = libmgmtapiremote.la 
 
 bin_PROGRAMS = api_cli_remote
 
-libmgmtapiremote_a_SOURCES = \
+lib_LTLIBRARIES = libmgmtapiremote.la
+#libmgmtapiremote_la_LDFLAGS = -static
+libmgmtapiremote_la_SOURCES = \
   ../CfgContextImpl.cc \
   ../CfgContextManager.cc \
   ../CfgContextUtils.cc \
@@ -37,7 +40,7 @@ libmgmtapiremote_a_SOURCES = \
 
 api_cli_remote_SOURCES = APITestCliRemote.cc 
 api_cli_remote_LDADD = \
-  libmgmtapiremote.a \
+  libmgmtapiremote.la \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ \
   @LIBTCL@ @LIBDB@ @LIBRT@ @LIBDL@ @LIBSSL@ @LIBICONV@

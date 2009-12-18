@@ -1734,9 +1734,9 @@ open_main_log(char *ymon_notice, const size_t ymon_notice_size)
     strncat(ymon_notice, " squid.blog not enabled", ymon_notice_size - strlen(ymon_notice) - 1);
     return -1;
   }
-
+#ifdef HAVE_POSIX_FADVISE
   posix_fadvise(main_fd, 0, 0, POSIX_FADV_DONTNEED);
-
+#endif
   return main_fd;
 }
 

@@ -130,6 +130,15 @@ int framepointer = 0;
 int program_counter = 0;
 #endif  // linux check
 
+#if (HOST_OS == darwin)
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <math.h>
+#include "inktomi++.h"
+#include "CoreUtils.h"
+#endif
+
 #ifdef READ_CORE_WMT
 #include "WMT-Debug.h"
 #include "WMT-ServerFileSM.h"
@@ -211,11 +220,11 @@ CoreUtils::insert_table(intptr_t vaddr1, intptr_t offset1, intptr_t fsize1)
 
   if (arrayMem.length() == 0) {
     arrayMem(0);
-    arrayMem[0].vaddr = vaddr1;
-    arrayMem[0].offset = offset1;
-    arrayMem[0].fsize = fsize1;
+    arrayMem[(intptr_t)0].vaddr = vaddr1;
+    arrayMem[(intptr_t)0].offset = offset1;
+    arrayMem[(intptr_t)0].fsize = fsize1;
   } else {
-    int index = find_vaddr(vaddr1, arrayMem.length(), 0);
+    intptr_t index = find_vaddr(vaddr1, arrayMem.length(), 0);
     if (index == arrayMem.length()) {
       arrayMem(index);
       arrayMem[index].vaddr = vaddr1;
@@ -223,17 +232,17 @@ CoreUtils::insert_table(intptr_t vaddr1, intptr_t offset1, intptr_t fsize1)
       arrayMem[index].fsize = fsize1;
     } else if (index == 0) {
       arrayMem(arrayMem.length());
-      for (int i = 0; i < arrayMem.length(); i++) {
+      for (intptr_t i = 0; i < arrayMem.length(); i++) {
         arrayMem[arrayMem.length() - i - 1].vaddr = arrayMem[arrayMem.length() - i - 2].vaddr;
         arrayMem[arrayMem.length() - i - 1].offset = arrayMem[arrayMem.length() - i - 2].offset;
         arrayMem[arrayMem.length() - i - 1].fsize = arrayMem[arrayMem.length() - i - 2].fsize;
       }
-      arrayMem[0].vaddr = vaddr1;
-      arrayMem[0].offset = offset1;
-      arrayMem[0].fsize = fsize1;
+      arrayMem[(intptr_t)0].vaddr = vaddr1;
+      arrayMem[(intptr_t)0].offset = offset1;
+      arrayMem[(intptr_t)0].fsize = fsize1;
     } else {
       arrayMem(arrayMem.length());
-      for (int i = 1; i < arrayMem.length() - index; i++) {
+      for (intptr_t i = 1; i < arrayMem.length() - index; i++) {
         arrayMem[arrayMem.length() - i].vaddr = arrayMem[arrayMem.length() - i - 1].vaddr;
         arrayMem[arrayMem.length() - i].offset = arrayMem[arrayMem.length() - i - 1].offset;
         arrayMem[arrayMem.length() - i].fsize = arrayMem[arrayMem.length() - i - 1].fsize;
@@ -251,7 +260,7 @@ CoreUtils::insert_table(intptr_t vaddr1, intptr_t offset1, intptr_t fsize1)
 intptr_t
 CoreUtils::read_core_memory(intptr_t vaddr, intptr_t length, char *buf, FILE * fp)
 {
-  int index = find_vaddr(vaddr, arrayMem.length(), 0);
+  intptr_t index = find_vaddr(vaddr, arrayMem.length(), 0);
   if (inTable == false)
     return -1;
   else {

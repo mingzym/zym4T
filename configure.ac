@@ -99,6 +99,19 @@ AS_IF([test "x$enable_diskinkaio" = "xyes"],
 )
 
 #
+# libev
+#
+
+AC_MSG_CHECKING([whether to use libev even if not required])
+AC_ARG_ENABLE([libev],
+  [AS_HELP_STRING([--enable-libev],[use libev even if not required])],
+  [],
+  [enable_libev=no]
+)
+AC_MSG_RESULT([$enable_libev])
+
+
+#
 # Micro
 #
 
@@ -334,7 +347,16 @@ AC_DEFINE([_REENTRANT],1,
   [Reentrant version of several functions get declared.]
 )
 
-EXTRA_CXX_LDFLAGS="-rdynamic"
+case $host_os in
+  linux*)
+    EXTRA_CXX_LDFLAGS="-rdynamic"
+    ;;
+  darwin*)
+    ;;
+  *)         
+    EXTRA_CXX_LDFLAGS="-rdynamic"
+   ;;
+esac
 
     #
     # _Here_ is where we go ahead and add the _optimizations_ to already
@@ -381,6 +403,7 @@ AC_CHECK_LIB([pthread],[pthread_exit],[AC_SUBST([LIBTHREAD],["-lpthread"])])
 AC_CHECK_LIB([rt],[clock_gettime],[AC_SUBST([LIBRT],["-lrt"])])
 AC_CHECK_LIB([posix4],[clock_gettime],[AC_SUBST([LIBRT],["-lposix4"])])
 AC_CHECK_LIB([iconv],[iconv_open],[AC_SUBST([LIBICONV],["-liconv"])])
+AC_CHECK_LIB([ev],[ev_sleep],[AC_SUBST([LIBEV],["-lev"])])
 
 AC_CHECK_LIB([ssl],[SSL_CTX_new],
   [AC_SUBST([LIBSSL],["-lssl -lcrypto"])
@@ -401,6 +424,13 @@ SC_PATH_TCLCONFIG
 SC_LOAD_TCLCONFIG
 
 # expect tclConfig.sh to populate TCL_LIB_FLAG and TCL_INCLUDE_SPEC
+case $host_os in
+  darwin*)
+    TCL_LIB_FLAG="-ltcl"
+    ;;
+  *)         
+   ;;
+esac
 AC_SUBST([LIBTCL],[$TCL_LIB_FLAG])
 CPPFLAGS="$CPPFLAGS $TCL_INCLUDE_SPEC"
 
@@ -430,14 +460,17 @@ fi
 
 AC_CHECK_FUNCS([clock_gettime kqueue epoll_ctl posix_memalign lrand48_r srand48_r])
 
-if test "$ac_cv_func_epoll_ctl" = "yes"; then
+if test "x$enable_libev" = "xyes"; then
+   AC_DEFINE([USE_LIBEV])
+   have_good_poller=1
+elif test "$ac_cv_func_epoll_ctl" = "yes"; then
    AC_DEFINE([USE_EPOLL])
    have_good_poller=1
 elif test "$ac_cv_func_kqueue" = "yes"; then
    AC_DEFINE([USE_KQUEUE])
    have_good_poller=1
 else
-    AC_MSG_FAILURE([No suitable polling interface found])
+   AC_MSG_FAILURE([No suitable polling interface found])
 fi
 
 # For SunPro 5.2 - we need the demangle symbol for
@@ -518,14 +551,16 @@ APR_CHECK_GETHOSTBYNAME_R_STYLE
 # use modular IOCORE 
 # 
 iocore_include_dirs="-I\$(top_srcdir)/librecords \
- -I\$(top_srcdir)/iocore/utils \
- -I\$(top_srcdir)/iocore/cache \
- -I\$(top_srcdir)/iocore/net \
+ -I\$(top_srcdir)/libinktomi++ \
  -I\$(top_srcdir)/iocore/eventsystem \
+ -I\$(top_srcdir)/iocore/net \
  -I\$(top_srcdir)/iocore/aio \
- -I\$(top_srcdir)/iocore/dns \
  -I\$(top_srcdir)/iocore/hostdb \
- -I\$(top_srcdir)/iocore/cluster" 
+ -I\$(top_srcdir)/iocore/cache \
+ -I\$(top_srcdir)/iocore/cluster \
+ -I\$(top_srcdir)/iocore/utils \
+ -I\$(top_srcdir)/iocore/dns \
+ -I\$(top_srcdir)/libev"
 
 AC_DEFINE([HTTP_CACHE])
 

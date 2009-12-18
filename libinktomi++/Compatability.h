@@ -57,6 +57,8 @@ template<class T> T max(const T a, const T b)
 #if (HOST_OS == linux)
 #define NEED_ALTZONE_DEFINED
 #define MAP_SHARED_MAP_NORESERVE (MAP_SHARED)
+#elif (HOST_OS == darwin)
+#define MAP_SHARED_MAP_NORESERVE (MAP_SHARED)
 #else
 #define MAP_SHARED_MAP_NORESERVE (MAP_SHARED | MAP_NORESERVE)
 #endif

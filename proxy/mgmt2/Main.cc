@@ -76,7 +76,7 @@
 #endif
 
 
-#if (HOST_OS != linux)
+#if (HOST_OS != linux) && (HOST_OS != darwin)
 extern "C"
 {
   int gethostname(char *name, int namelen);

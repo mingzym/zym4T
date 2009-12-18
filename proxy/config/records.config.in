@@ -425,7 +425,7 @@ CONFIG proxy.config.net.tcp_accept_defer_timeout INT 0
 #
 ##############################################################################
 CONFIG proxy.config.cluster.cluster_port INT 8086
-CONFIG proxy.config.cluster.ethernet_interface STRING NULL
+CONFIG proxy.config.cluster.ethernet_interface STRING en0
 ##############################################################################
 #
 # Cache
@@ -616,7 +616,7 @@ CONFIG proxy.config.header.parse.no_host_url_redirect STRING NULL
 ##############################################################################
 CONFIG proxy.config.url_remap.default_to_server_pac INT 0
 CONFIG proxy.config.url_remap.default_to_server_pac_port INT -1
-CONFIG proxy.config.url_remap.remap_required INT 1
+CONFIG proxy.config.url_remap.remap_required INT 0
 CONFIG proxy.config.url_remap.pristine_host_hdr INT 0
 ##############################################################################
 #

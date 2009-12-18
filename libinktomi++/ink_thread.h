@@ -225,6 +225,29 @@ ink_sem_destroy(ink_sem * sp)
   ink_assert(!sem_destroy(sp));
 }
 
+#if (HOST_OS == darwin)
+static inline ink_sem * 
+ink_sem_open(const char *name , int oflag, mode_t mode, unsigned int value)
+{
+  ink_sem *sptr;
+  sptr = sem_open(name, oflag, mode, value);
+  ink_assert(sptr != SEM_FAILED);
+  return sptr;
+}
+
+static inline void
+ink_sem_close(ink_sem * sp)
+{
+  ink_assert(!sem_close(sp));
+}
+
+static inline int
+ink_sem_unlink(const char *name)
+{
+  return sem_unlink(name);
+}
+#endif /* darwin */
+
 /*******************************************************************
  * Posix Condition Variables
  ******************************************************************/

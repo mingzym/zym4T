@@ -109,7 +109,7 @@ struct RENodes
 
 struct REState
 {
-  int id;
+  intptr_t id;
   int accept_num;
   bool marked;
   unsigned char cclass[33];
@@ -1263,7 +1263,7 @@ re_print_state(REState * state)
   }
   state->marked = true;
 
-  printf("%3d: ", state->id);
+  printf("%3d: ", (int)state->id);
   if (state->accept_num != -1) {
     printf("accept (%d)", state->accept_num);
   }
@@ -1273,7 +1273,7 @@ re_print_state(REState * state)
   while (t) {
     printf("     ");
     re_print_cclass(t->cclass);
-    printf(" --> %d\n", t->state->id);
+    printf(" --> %d\n", (int)t->state->id);
     t = t->next;
   }
 
@@ -1423,10 +1423,11 @@ re_construct(RENode * n, int *count)
   unsigned char *cclass;
   RENode **nodes;
   RENode **new_nodes;
-  int cur_state;
+  intptr_t cur_state;
   int nstates;
   int input;
-  int i, j;
+  int i;
+  intptr_t j;
 
   nstates = 1;
   cur_state = 0;
@@ -1601,8 +1602,10 @@ re_build(REState ** states,
   RETransition *t;
   int *counts;
   int input;
-  int i, j;
-  int b, c;
+  intptr_t i;
+  int j;
+  intptr_t b;
+  int c;
 
   /* allocate the counts array */
   counts = NEW(new int[nstates]);

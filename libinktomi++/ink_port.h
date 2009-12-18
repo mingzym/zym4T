@@ -90,6 +90,12 @@ typedef off_t ink_off_t;
 #define MAXINT INT_MAX
 #endif
 
+#if (HOST_OS == darwin)
+#define NO_MEMALIGN
+#define RENTRENT_GETHOSTBYNAME
+#define RENTRENT_GETHOSTBYADDR
+#endif
+
 #define NUL '\0'
 
 // copy from ink_ntio.h

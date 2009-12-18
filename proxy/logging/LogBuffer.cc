@@ -67,8 +67,7 @@ int fieldlist_cache_entries = 0;
 vink32
   LogBuffer::M_ID = 0;
 
-iObjectActivator
-  iObjectActivatorInstance;     /* just to do ::Init() before main() */
+//iObjectActivator  iObjectActivatorInstance;     /* just to do ::Init() before main() */
 
 iObject *
   iObject::free_heap = 0;       /* list of free blocks */

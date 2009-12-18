@@ -22,9 +22,9 @@ AM_CPPFLAGS = \
 MGMT_DEFS = @MGMT_DEFS@
 DEFS += $(MGMT_DEFS)
 
-noinst_LIBRARIES = libmgmtapilocal.a
-
-libmgmtapilocal_a_SOURCES = \
+#noinst_LIBRARIES = libmgmtapilocal.a
+lib_LTLIBRARIES = libmgmtapilocal.la
+libmgmtapilocal_la_SOURCES = \
   include/INKMgmtAPI.h \
   CfgContextDefs.h \
   CfgContextImpl.cc \

@@ -77,10 +77,15 @@ ink_gethostbyaddr_r(char *ip, int len, int type, ink_gethostbyaddr_r_data * data
   if (!res && addrp)
     r = addrp;
 #else
+#ifdef RENTRENT_GETHOSTBYADDR
+  struct hostent *r = gethostbyaddr((const void *) ip, len, type);
+
+#else
   struct hostent *r = gethostbyaddr_r((char *) ip, len, type, &data->ent,
                                       data->buf,
                                       INK_GETHOSTBYNAME_R_DATA_SIZE,
                                       &data->herrno);
+#endif
 #endif //LINUX
   return r;
 }

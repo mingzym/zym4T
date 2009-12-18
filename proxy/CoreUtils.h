@@ -62,6 +62,9 @@ struct core_stack_state
 #include <assert.h>
 #include <asm/ptrace.h>         // for structure pt_regs
 #include <elf.h>
+#ifdef USE_LIBEV
+#undef EV_NONE
+#endif
 #include "../libinktomi++/DynArray.h"
 
 #define SP_REGNUM 15            /* Contains address of top of stack USP */
@@ -78,6 +81,26 @@ struct core_stack_state
   intptr_t arg[NO_OF_ARGS];
 };
 #endif  // linux check
+
+#if (HOST_OS == darwin)
+#include <stdio.h>
+#include <unistd.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <assert.h>
+
+#define NO_OF_ARGS 10           /* The argument depth upto which we would be looking into
+                                   the stack */
+
+// contains local and in registers, frame pointer, and stack base
+struct core_stack_state
+{
+  intptr_t framep;                   //int stkbase;
+  intptr_t pc;
+  intptr_t arg[NO_OF_ARGS];
+};
+#endif  
 
 // to be sorted by virtual address
 struct memTable

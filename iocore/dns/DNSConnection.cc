@@ -49,7 +49,7 @@
 //
 
 DNSConnection::DNSConnection():
-fd(NO_FD), num(0), epoll_ptr(NULL)
+fd(NO_FD), num(0)
 {
   memset(&sa, 0, sizeof(struct sockaddr_in));
 }

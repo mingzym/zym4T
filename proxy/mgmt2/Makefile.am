@@ -95,9 +95,9 @@ traffic_manager_LDADD = \
   cluster/libcluster.a \
   preparse/libpreparse.a \
   stats/libstats.a \
-  web2/libweb.a \
+  web2/libweb.la \
   cli/libcli_lm.a \
-  api2/libmgmtapilocal.a \
+  api2/libmgmtapilocal.la \
   utils/libutils_lm.a \
   $(top_builddir)/proxy/hdrs/libhdrs.a \
   $(top_builddir)/librecords/libreclocal.a \

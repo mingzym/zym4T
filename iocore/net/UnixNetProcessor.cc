@@ -313,43 +313,13 @@ UnixNetProcessor::connect(Continuation * cont,
 
   check_emergency_throttle(vc->con);
 
-  vc->ep.type = EPOLL_READWRITE_VC;
-  vc->ep.data.vc = vc;
-
   PollDescriptor *pd = get_PollDescriptor(t);
 
-#if defined(USE_EPOLL)
-  struct epoll_event ev;
-  memset(&ev, 0, sizeof(struct epoll_event));
-  ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
-  ev.data.ptr = &vc->ep;
-
-  res = epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, vc->con.fd, &ev);
-
-  if (res < 0) {
+  if (vc->ep.start(pd, vc, EVENTIO_READ|EVENTIO_WRITE) < 0) {
     Debug("iocore_net", "connect : Error in adding to epoll list\n");
     close_UnixNetVConnection(vc, vc->thread);
     return ACTION_RESULT_DONE;
   }
-
-#elif defined(USE_KQUEUE)
-  struct kevent ev;
-  EV_SET(&ev, vc->con.fd, EVFILT_READ, EV_ADD, 0, 0, &vc->ep);
-  if (kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL) < 0) {
-    Debug("iocore_net", "connect : Error in adding to kqueue list\n");
-    close_UnixNetVConnection(vc, vc->thread);
-    return ACTION_RESULT_DONE;
-  }
-
-  EV_SET(&ev, vc->con.fd, EVFILT_WRITE, EV_ADD, 0, 0, &vc->ep);
-  if (kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL) < 0) {
-    Debug("iocore_net", "connect : Error in adding to kqueue list\n");
-    close_UnixNetVConnection(vc, vc->thread);
-    return ACTION_RESULT_DONE;
-  }
-#else
-#error port me
-#endif
 
   vc->nh->open_list.enqueue(vc);
 
@@ -450,8 +420,7 @@ struct CheckConnect:public Continuation
     }
   }
 
-CheckConnect(ProxyMutex * m = NULL):Continuation(m), connect_status(-1), recursion(0), timeout(0)
-  {
+  CheckConnect(ProxyMutex * m = NULL):Continuation(m), connect_status(-1), recursion(0), timeout(0) {
     SET_HANDLER(&CheckConnect::handle_connect);
     buf = new_empty_MIOBuffer(1);
     reader = buf->alloc_reader();
@@ -468,11 +437,9 @@ Action *
 NetProcessor::connect_s(Continuation * cont, unsigned int ip,
                         int port, unsigned int _interface, int timeout, NetVCOptions * opt)
 {
-
   Debug("connect", "NetProcessor::connect_s called");
   CheckConnect *c = NEW(new CheckConnect(cont->mutex));
   return c->connect_s(cont, ip, port, _interface, timeout, opt);
-
 }
 
 
@@ -565,10 +532,8 @@ UnixNetProcessor::createNetAccept()
 }
 
 struct socks_conf_struct *
-  NetProcessor::socks_conf_stuff = NULL;
-int
-  NetProcessor::accept_mss = 0;
+NetProcessor::socks_conf_stuff = NULL;
+int NetProcessor::accept_mss = 0;
 
-UnixNetProcessor
-  unix_netProcessor;
+UnixNetProcessor unix_netProcessor;
 NetProcessor & netProcessor = unix_netProcessor;

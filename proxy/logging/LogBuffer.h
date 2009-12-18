@@ -141,12 +141,13 @@ private:
   size_t class_size;            /* real class size */
   iObject *next_object;
 
-  static void Init(void);
+
 protected:
     iObject(const iObject &);   /* declared; not implemented - block copying and assignment */
     iObject & operator=(const iObject &);       /* ditto */
 
 public:
+  static void Init(void);
   void *operator  new(size_t size);
   void operator  delete(void *p);
 
@@ -170,7 +171,6 @@ private:
   iLogBufferBuffer *next;
   size_t real_buf_size;
 
-  static void Init(void);
 
     iLogBufferBuffer()
   {
@@ -193,6 +193,7 @@ public:
   char *buf;
   size_t size;
 
+  static void Init(void);
   static iLogBufferBuffer *New_iLogBufferBuffer(size_t _buf_size);
   static iLogBufferBuffer *Delete_iLogBufferBuffer(iLogBufferBuffer * _b);
 

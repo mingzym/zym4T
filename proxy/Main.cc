@@ -46,7 +46,9 @@ extern "C" int plock(int);
 #include <sys/filio.h>
 #endif
 #include <syslog.h>
+#if (HOST_OS != darwin)
 #include <mcheck.h>
+#endif
 
 #include "Main.h"
 #include "signals.h"
@@ -311,7 +313,13 @@ max_out_limit(int which, bool max_it = true, bool unlim_it = true)
   if (max_it) {
     ink_release_assert(getrlimit(MAGIC_CAST(which), &rl) >= 0);
     if (rl.rlim_cur != rl.rlim_max) {
+#if (HOST_OS == darwin)
+      struct rlimit rlt;
+      rlt.rlim_max = OPEN_MAX;
+      rl.rlim_cur = min(rlt.rlim_max, rl.rlim_max);
+#else
       rl.rlim_cur = rl.rlim_max;
+#endif
       ink_release_assert(setrlimit(MAGIC_CAST(which), &rl) >= 0);
     }
   }
@@ -1288,6 +1296,15 @@ check_system_constants()
 {
 }
 
+/*
+static void
+init_logging()
+{
+  //  iObject::Init();
+  //  iLogBufferBuffer::Init();
+}
+*/
+
 static void
 init_http_header()
 {
@@ -1542,7 +1559,11 @@ main(int argc, char **argv)
 
   NOWARN_UNUSED(argc);
 
+  //init_logging();
+
+#ifdef HAVE_MCHECK
   mcheck_pedantic(NULL);
+#endif
 
 #ifdef USE_NCA
   NCA_handlers = ink_number_of_processors();

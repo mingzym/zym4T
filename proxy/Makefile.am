@@ -9,10 +9,8 @@ SUBDIRS = congest dns_cache http2 hdrs logging mgmt2 config stats
 endif
 
 AM_CPPFLAGS = \
-  -I$(top_srcdir)/libinktomi++ \
-  -I$(top_srcdir)/proxy/dns_cache \
-  -I$(top_srcdir)/librecords \
   $(iocore_include_dirs) \
+  -I$(top_srcdir)/proxy/dns_cache \
   -I$(srcdir)/http2 \
   -I$(srcdir)/logging \
   -I$(srcdir)/http2/remap  \
@@ -157,7 +155,7 @@ traffic_server_LDADD = \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
   @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBICONV@ \
-  @LIBMLD@ @LIBEXC@ -lm
+  @LIBMLD@ @LIBEXC@ -lm @LIBEV@
 
 logcat_SOURCES = logcat.cc
 logcat_LDFLAGS = @EXTRA_CXX_LDFLAGS@
@@ -213,7 +211,7 @@ logcat_LDADD = \
   $(top_builddir)/iocore/eventsystem/libinkevent.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
+  @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
 logstats_CPPFLAGS = \
@@ -275,7 +273,7 @@ logstats_LDADD = \
   $(top_builddir)/iocore/eventsystem/libinkevent.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
+  @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
 sac_SOURCES = sac.cc
@@ -332,7 +330,7 @@ sac_LDADD = \
   $(top_builddir)/librecords/librecprocess.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
+  @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
 cust_log_fmt_cnvrt_SOURCES = cust_log_fmt_cnvrt.cc

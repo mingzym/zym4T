@@ -118,19 +118,17 @@ Connection::close()
 
 
 int
-Connection::fast_connect(const unsigned int ip, const int port, NetVCOptions * opt, const int socketFd)
+Connection::fast_connect(const unsigned int ip, const int port, NetVCOptions * opt, const int sock)
 {
   inku32 *z;
-  ink_assert(fd == NO_FD);
   int res = 0;
 
-  if (socketFd == -1) {
-    if ((res = socketManager.socket(AF_INET, SOCK_STREAM, 0)) < 0) {
+  if (sock < 0) {
+    ink_assert(fd == NO_FD);
+    if ((res = socketManager.socket(AF_INET, SOCK_STREAM, 0)) < 0)
       goto Lerror;
-    }
-  } else {
-    res = socketFd;
-  }
+  } else
+    res = sock;
 
   fd = res;
 
@@ -190,11 +188,10 @@ Connection::fast_connect(const unsigned int ip, const int port, NetVCOptions * o
       Debug("socket", "::fast_connect: setsockopt() SO_KEEPALIVE on socket");
     }
   }
-  res =::connect(fd, (struct sockaddr *) &sa, sizeof(struct sockaddr_in));
+  res = ::connect(fd, (struct sockaddr *) &sa, sizeof(struct sockaddr_in));
 
-  if (res < 0 && errno != EINPROGRESS) {
+  if (res < 0 && errno != EINPROGRESS)
     goto Lerror;
-  }
 
   return 0;
 
