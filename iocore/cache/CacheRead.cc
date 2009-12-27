@@ -874,50 +874,52 @@ CacheVC::openReadVecWrite(int event, Event * e)
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
 
-  ink_debug_assert(part->mutex->thread_holding == this_ethread());
-  int err = ECACHE_ALT_MISS;
-  ink_assert(event == AIO_EVENT_DONE);
+  cancel_trigger();
   set_io_not_in_progress();
   ink_assert(od);
   od->writing_vec = 0;
   if (_action.cancelled)
     return openWriteCloseDir(EVENT_IMMEDIATE, 0);
-
-  if (io.ok()) {
-    ink_assert(f.evac_vector);
-    ink_assert(frag_type == CACHE_FRAG_TYPE_HTTP);
-    ink_assert(!buf.m_ptr);
-    f.evac_vector = false;
-    last_collision = NULL;
-    f.update = 0;
-    alternate_index = CACHE_ALT_INDEX_DEFAULT;
-    f.use_first_key = 0;
-    vio.op = VIO::READ;
-    dir_overwrite(&first_key, part, &dir, &od->first_dir);
-    if (od->move_resident_alt) {
-      dir_insert(&od->single_doc_key, part, &od->single_doc_dir);
-    }
+  {
+    CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
+    if (!lock)
+      VC_SCHED_LOCK_RETRY();
+    if (io.ok()) {
+      ink_assert(f.evac_vector);
+      ink_assert(frag_type == CACHE_FRAG_TYPE_HTTP);
+      ink_assert(!buf.m_ptr);
+      f.evac_vector = false;
+      last_collision = NULL;
+      f.update = 0;
+      alternate_index = CACHE_ALT_INDEX_DEFAULT;
+      f.use_first_key = 0;
+      vio.op = VIO::READ;
+      dir_overwrite(&first_key, part, &dir, &od->first_dir);
+      if (od->move_resident_alt)
+        dir_insert(&od->single_doc_key, part, &od->single_doc_dir);
 #ifdef FIXME_NONMODULAR
-    int alt_ndx = HttpTransactCache::SelectFromAlternates(write_vector,
-                                                          &request, params);
+      int alt_ndx = HttpTransactCache::SelectFromAlternates(write_vector, &request, params);
 #else
-    int alt_ndx = 0;
+      int alt_ndx = 0;
 #endif
-    part->close_write(this);
-    if (alt_ndx >= 0) {
-      vector.clear();
-      // we don't need to start all over again, since we already
-      // have the vector in memory. But this is simpler and this
-      // case is rare.
-      SET_HANDLER(&CacheVC::openReadStartHead);
-      return openReadStartHead(EVENT_IMMEDIATE, 0);
-    }
-  } else
-    part->close_write(this);
+      part->close_write(this);
+      if (alt_ndx >= 0) {
+        vector.clear();
+        // we don't need to start all over again, since we already
+        // have the vector in memory. But this is simpler and this
+        // case is rare.
+        goto Lrestart;
+      }
+    } else
+      part->close_write(this);
+  }
 
   CACHE_INCREMENT_DYN_STAT(cache_read_failure_stat);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ_FAILED, (void *) -err);
+  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ_FAILED, (void *) -ECACHE_ALT_MISS);
   return free_CacheVC(this);
+Lrestart:
+  SET_HANDLER(&CacheVC::openReadStartHead);
+  return openReadStartHead(EVENT_IMMEDIATE, 0);
 }
 #endif
 
