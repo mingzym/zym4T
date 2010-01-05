@@ -27,18 +27,12 @@
 #include "Stats.h"
 #include "P_EventSystem.h"
 
-StatDescriptor
-  StatDescriptor::all_stats[StatDescriptor::MAX_NUM_STATS];
-RecRawStatBlock *
-  StatDescriptor::g_stat_block;
-StatDescriptor
-  G_NULL_STAT;
-volatile int
-  StatDescriptor::top_stat = 0;
-ink_mutex
-  g_flt_mux;
-ink_mutex
-  g_cpl_mux;
+StatDescriptor StatDescriptor::all_stats[StatDescriptor::MAX_NUM_STATS];
+RecRawStatBlock *StatDescriptor::g_stat_block;
+StatDescriptor G_NULL_STAT;
+volatile int StatDescriptor::top_stat = 0;
+ink_mutex g_flt_mux;
+ink_mutex g_cpl_mux;
 
 // Main.cc call-in point
 void
@@ -58,17 +52,14 @@ StatDescriptor::initialize()
 
 RecData StatDescriptor::update_value()
 {
-  RecData
-    retv;
+  RecData retv;
 
-  if (m_magic == NULL_VALUE || m_magic == SHALLOW_COPY || m_magic == IN_ERROR) {
+  if (m_magic == NULL_VALUE || m_magic == SHALLOW_COPY || m_magic == IN_ERROR)
     return m_value;;
-  }
 
   ink_release_assert(m_id >= 0 && m_id < MAX_NUM_STATS);
 
-  int
-    rc = REC_ERR_OKAY;
+  int rc = REC_ERR_OKAY;
 
   switch (m_type) {
   case RECD_INT:
