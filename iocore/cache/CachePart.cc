@@ -125,7 +125,7 @@ CacheVC::scanObject(int event, Event * e)
     io.aiocb.aio_nbytes = SCAN_BUF_SIZE;
     io.aiocb.aio_buf = buf->data();
     io.action = this;
-    io.thread = mutex->thread_holding;
+    io.thread = AIO_CALLBACK_THREAD_ANY;
     goto Lread;
   }
 

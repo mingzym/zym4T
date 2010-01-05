@@ -528,6 +528,7 @@ free_CacheVC(CacheVC * cont)
   cont->io.mutex.clear();
   cont->io.aio_result = 0;
   cont->io.aiocb.aio_nbytes = 0;
+  cont->io.aiocb.aio_reqprio = AIO_DEFAULT_PRIORITY;
 #ifdef HTTP_CACHE
   cont->request.reset();
   cont->vector.clear();

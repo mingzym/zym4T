@@ -297,13 +297,11 @@ CacheVC::openReadFromWriter(int event, Event * e)
   CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
   if (!lock)
     VC_SCHED_LOCK_RETRY();
+  od = part->open_read(&first_key); // recheck in case the lock failed
   if (!od) {
-    od = part->open_read(&first_key);
-    if (!od) {
-      write_vc = NULL;
-      SET_HANDLER(&CacheVC::openReadStartHead);
-      return openReadStartHead(event, e);
-    }
+    write_vc = NULL;
+    SET_HANDLER(&CacheVC::openReadStartHead);
+    return openReadStartHead(event, e);
   } else
     ink_debug_assert(od == part->open_read(&first_key));
   if (!write_vc) {
@@ -419,8 +417,8 @@ CacheVC::openReadFromWriter(int event, Event * e)
   writer_buf = write_vc->blocks;
   writer_offset = write_vc->offset;
   length = write_vc->length;
-  //copy the vector
-  f.single_fragment = !write_vc->fragment;        //single fragment doc
+  // copy the vector
+  f.single_fragment = !write_vc->fragment;        // single fragment doc
   docpos = 0;
   earliest_key = write_vc->earliest_key;
   ink_assert(earliest_key == key);
@@ -428,14 +426,11 @@ CacheVC::openReadFromWriter(int event, Event * e)
   dir_clean(&first_dir);
   dir_clean(&earliest_dir);
   Debug("cache_read_agg", "%x key: %X %X: single fragment read", first_key.word(1), key.word(0));
-
   MUTEX_RELEASE(writer_lock);
-  //we've got everything....ready to roll!!
   SET_HANDLER(&CacheVC::openReadFromWriterMain);
   CACHE_INCREMENT_DYN_STAT(cache_read_busy_success_stat);
   _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
   return EVENT_DONE;
-
 #endif //READ_WHILE_WRITER
 }
 

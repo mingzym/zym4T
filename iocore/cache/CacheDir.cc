@@ -887,7 +887,7 @@ CacheSync::aio_write(int fd, char *b, int n, ink_off_t o)
   io.aiocb.aio_nbytes = n;
   io.aiocb.aio_buf = b;
   io.action = this;
-  io.thread = mutex->thread_holding;
+  io.thread = AIO_CALLBACK_THREAD_ANY;
   ink_assert(ink_aio_write(&io) >= 0);
 }
 

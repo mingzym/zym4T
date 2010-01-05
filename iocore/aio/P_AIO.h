@@ -39,7 +39,8 @@
 #include "P_EventSystem.h"
 #include "I_AIO.h"
 
-// #define AIO_STATS
+// for debugging
+// #define AIO_STATS 1
 
 #undef  AIO_MODULE_VERSION
 #define AIO_MODULE_VERSION        makeModuleVersion(AIO_MODULE_MAJOR_VERSION,\
@@ -53,9 +54,6 @@ struct AIOCallbackInternal:AIOCallback
   AIO_Reqs *aio_req;
   ink_hrtime sleep_time;
   int io_complete(int event, void *data);
-  void AIOCallback_is_an_abstract_class()
-  {
-  }
   AIOCallbackInternal()
   {
     const size_t to_zero = sizeof(AIOCallbackInternal)
@@ -90,9 +88,6 @@ struct AIO_Reqs
   /* Atomic list to temporarily hold the request if the
      lock for a particular queue cannot be acquired */
   InkAtomicList aio_temp_list;
-#ifdef INKDISKAIO
-  ProxyMutexPtr list_mutex;
-#endif
   ink_mutex aio_mutex;
   ink_cond aio_cond;
   int index;                    /* position of this struct in the aio_reqs array */
@@ -110,55 +105,15 @@ public:
   int num_temp;
   int num_queue;
   ink_hrtime start;
-    AIOTestData():Continuation(new_ProxyMutex()), num_req(0), num_temp(0), num_queue(0)
+
+  int ink_aio_stats(int event, void *data);
+
+  AIOTestData():Continuation(new_ProxyMutex()), num_req(0), num_temp(0), num_queue(0)
   {
     start = ink_get_hrtime();
     SET_HANDLER(&AIOTestData::ink_aio_stats);
   }
-
-  int ink_aio_stats(int event, void *data);
 };
-#endif
-
-
-#ifdef INKDISKAIO
-#include "inkaio.h"
-void initialize_thread_for_diskaio(EThread *);
-struct AIOMissEvent:Continuation
-{
-  AIOCallback *cb;
-
-  int mainEvent(int event, Event * e)
-  {
-    if (!cb->action.cancelled)
-      cb->action.continuation->handleEvent(AIO_EVENT_DONE, cb);
-    delete this;
-      return EVENT_DONE;
-  }
-
-  AIOMissEvent(ProxyMutex * amutex, AIOCallback * acb)
-  : Continuation(amutex), cb(acb)
-  {
-    SET_HANDLER(&AIOMissEvent::mainEvent);
-  }
-};
-static ink_off_t kcb_offset, dm_offset, dmid_offset;
-inline INKAIOCB *
-get_kcb(EThread * t)
-{
-  return *((INKAIOCB **) ETHREAD_GET_PTR(t, kcb_offset));
-}
-
-inline Continuation *
-get_dm(EThread * t)
-{
-  return *((Continuation **) ETHREAD_GET_PTR(t, dm_offset));
-}
-inline int
-get_dmid(EThread * t)
-{
-  return *((int *) ETHREAD_GET_PTR(t, dmid_offset));
-}
 #endif
 
 enum aio_stat_enum

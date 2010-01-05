@@ -955,12 +955,11 @@ Part::clear_dir()
   SET_HANDLER(&Part::handle_dir_clear);
 
   io.aiocb.aio_fildes = fd;
-  io.aiocb.aio_reqprio = 0;
   io.aiocb.aio_buf = raw_dir;
   io.aiocb.aio_nbytes = dir_len;
   io.aiocb.aio_offset = skip;
   io.action = this;
-  io.thread = this_ethread();
+  io.thread = AIO_CALLBACK_THREAD_ANY;
   io.then = 0;
   ink_assert(ink_aio_write(&io));
   return 0;
@@ -1038,7 +1037,6 @@ Part::init(char *s, ink_off_t blocks, ink_off_t dir_skip, bool clear)
   for (i = 0; i < 4; i++) {
     AIOCallback *aio = &(init_info->part_aio[i]);
     aio->aiocb.aio_fildes = fd;
-    aio->aiocb.aio_reqprio = 0;
     aio->aiocb.aio_buf = &(init_info->part_h_f[i * INK_BLOCK_SIZE]);
     aio->aiocb.aio_nbytes = footerlen;
     aio->action = this;
@@ -1365,9 +1363,8 @@ Ldone:{
     for (int i = 0; i < 3; i++) {
       AIOCallback *aio = &(init_info->part_aio[i]);
       aio->aiocb.aio_fildes = fd;
-      aio->aiocb.aio_reqprio = 0;
       aio->action = this;
-      aio->thread = this_ethread();
+      aio->thread = AIO_CALLBACK_THREAD_ANY;
       aio->then = (i < 2) ? &(init_info->part_aio[i + 1]) : 0;
     }
     int footerlen = ROUND_TO_BLOCK(sizeof(PartHeaderFooter));
@@ -1438,11 +1435,10 @@ Part::handle_header_read(int event, void *data)
     }
 
     io.aiocb.aio_fildes = fd;
-    io.aiocb.aio_reqprio = 0;
     io.aiocb.aio_nbytes = part_dirlen(this);
     io.aiocb.aio_buf = raw_dir;
     io.action = this;
-    io.thread = this_ethread();
+    io.thread = AIO_CALLBACK_THREAD_ANY;
     io.then = 0;
 
     if (hf[0]->sync_serial == hf[1]->sync_serial &&

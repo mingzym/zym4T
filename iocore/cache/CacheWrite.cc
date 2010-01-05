@@ -729,7 +729,7 @@ Part::evac_range(ink_off_t low, ink_off_t high, int evac_phase)
 
       io.aiocb.aio_buf = doc_evacuator->buf->data();
       io.action = this;
-      io.thread = mutex->thread_holding;
+      io.thread = AIO_CALLBACK_THREAD_ANY;
       Debug("cache_evac", "evac_range evacuating %X %d", (int) dir_tag(&first->dir), (int) dir_offset(&first->dir));
       SET_HANDLER(&Part::evacuateDocReadDone);
       ink_assert(ink_aio_read(&io) >= 0);
@@ -1040,7 +1040,12 @@ Lagain:
   io.aiocb.aio_buf = agg_buffer;
   io.aiocb.aio_nbytes = agg_buf_pos;
   io.action = this;
-  io.thread = mutex->thread_holding;
+  /*
+    Callback on AIO thread so that we can issue a new write ASAP
+    as all writes are serialized in the partition.  This is not necessary
+    for reads proceed independently.
+   */
+  io.thread = AIO_CALLBACK_THREAD_AIO;
   SET_HANDLER(&Part::aggWriteDone);
   ink_aio_write(&io);
 
