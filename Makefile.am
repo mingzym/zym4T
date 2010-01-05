@@ -2,7 +2,6 @@
 # Top-level Makefile.am for Traffic Server.
 #
 # 
-#
 
 # Local Macros
 # http://www.gnu.org/software/automake/manual/automake.html#Local-Macros
