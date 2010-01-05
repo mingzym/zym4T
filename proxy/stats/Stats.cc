@@ -25,7 +25,7 @@
 
 #define _s_impl
 #include "Stats.h"
-#include "ink_mutex.h"
+#include "P_EventSystem.h"
 
 StatDescriptor
   StatDescriptor::all_stats[StatDescriptor::MAX_NUM_STATS];

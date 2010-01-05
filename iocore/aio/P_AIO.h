@@ -31,11 +31,6 @@
 #ifndef _P_AIO_h_
 #define _P_AIO_h_
 
-#ifndef INLINE_CC
-#undef INK_INLINE
-#define INK_INLINE inline
-#endif
-
 #include "P_EventSystem.h"
 #include "I_AIO.h"
 
@@ -65,13 +60,13 @@ struct AIOCallbackInternal:AIOCallback
   }
 };
 
-INK_INLINE int
+inline int
 AIOCallback::ok()
 {
   return (ink_off_t) aiocb.aio_nbytes == (ink_off_t) aio_result;
 };
 
-INK_INLINE int
+inline int
 AIOCallbackInternal::io_complete(int event, void *data)
 {
   (void) event;

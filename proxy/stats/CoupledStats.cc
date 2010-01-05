@@ -27,6 +27,7 @@
 
 #define _c_impl
 #include "CoupledStats.h"
+#include "P_EventSystem.h"
 
 void
 CoupledStatsSnapshot::CommitUpdates()

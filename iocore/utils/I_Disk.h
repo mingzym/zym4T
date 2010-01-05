@@ -33,10 +33,6 @@
 #ifndef _I_Disk_h_
 #define _I_Disk_h_
 
-#ifndef INK_INLINE
-#define INK_INLINE
-#endif
-
 #include "I_EventSystem.h"
 //
 // Events

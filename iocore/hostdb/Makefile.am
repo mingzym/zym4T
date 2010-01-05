@@ -23,7 +23,6 @@ noinst_LIBRARIES = libinkhostdb.a
 libinkhostdb_a_SOURCES = \
   HostDB.cc \
   I_HostDBProcessor.h \
-  Inline.cc \
   MultiCache.cc \
   P_HostDB.h \
   P_HostDBProcessor.h \

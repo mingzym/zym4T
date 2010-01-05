@@ -1202,7 +1202,7 @@ private:
   MIOBufferAccessor & operator =(const MIOBufferAccessor &);
 };
 
-INK_INLINE MIOBuffer * new_MIOBuffer_internal(
+inline MIOBuffer * new_MIOBuffer_internal(
 #ifdef TRACK_BUFFER_USER
                                                const char *loc,
 #endif
@@ -1224,7 +1224,7 @@ public:
 };
 #endif
 
-INK_INLINE MIOBuffer * new_empty_MIOBuffer_internal(
+inline MIOBuffer * new_empty_MIOBuffer_internal(
 #ifdef TRACK_BUFFER_USER
                                                      const char *loc,
 #endif
@@ -1253,15 +1253,15 @@ public:
 #define new_MIOBuffer               new_MIOBuffer_internal
 #define new_empty_MIOBuffer         new_empty_MIOBuffer_internal
 #endif
-INK_INLINE void free_MIOBuffer(MIOBuffer * mio);
+inline void free_MIOBuffer(MIOBuffer * mio);
 //////////////////////////////////////////////////////////////////////
 
-INK_INLINE IOBufferBlock * new_IOBufferBlock_internal(
+inline IOBufferBlock * new_IOBufferBlock_internal(
 #ifdef TRACK_BUFFER_USER
                                                        const char *loc
 #endif
   );
-INK_INLINE IOBufferBlock * new_IOBufferBlock_internal(
+inline IOBufferBlock * new_IOBufferBlock_internal(
 #ifdef TRACK_BUFFER_USER
                                                        const char *loc,
 #endif
@@ -1295,20 +1295,20 @@ public:
 #endif
 ////////////////////////////////////////////////////////////
 
-INK_INLINE IOBufferData *new_IOBufferData_internal(
+inline IOBufferData *new_IOBufferData_internal(
 #ifdef TRACK_BUFFER_USER
                                                     const char *location,
 #endif
                                                     int size_index = default_large_iobuffer_size,
                                                     AllocType type = DEFAULT_ALLOC);
 
-INK_INLINE IOBufferData *new_xmalloc_IOBufferData_internal(
+inline IOBufferData *new_xmalloc_IOBufferData_internal(
 #ifdef TRACK_BUFFER_USER
                                                             const char *location,
 #endif
                                                             void *b, int size);
 
-INK_INLINE IOBufferData *new_constant_IOBufferData_internal(
+inline IOBufferData *new_constant_IOBufferData_internal(
 #ifdef TRACK_BUFFER_USER
                                                              const char *loc,
 #endif
@@ -1345,8 +1345,8 @@ new_constant_IOBufferData_internal(RES_PATH("memory/IOBuffer/"), \
 #define  new_constant_IOBufferData new_constant_IOBufferData_internal
 #endif
 
-INK_INLINE int iobuffer_size_to_index(unsigned int size, int max = max_iobuffer_size);
-INK_INLINE int index_to_buffer_size(int idx);
+inline int iobuffer_size_to_index(unsigned int size, int max = max_iobuffer_size);
+inline int index_to_buffer_size(int idx);
 /**
   Clone a IOBufferBlock chain. Used to snarf a IOBufferBlock chain
   w/o copy.
@@ -1357,7 +1357,7 @@ INK_INLINE int index_to_buffer_size(int idx);
   @return ptr to head of new IOBufferBlock chain.
 
 */
-INK_INLINE IOBufferBlock *iobufferblock_clone(IOBufferBlock * b, int offset, int len);
+inline IOBufferBlock *iobufferblock_clone(IOBufferBlock * b, int offset, int len);
 /**
   Skip over specified bytes in chain. Used for dropping references.
 
@@ -1369,5 +1369,5 @@ INK_INLINE IOBufferBlock *iobufferblock_clone(IOBufferBlock * b, int offset, int
   @return ptr to head of new IOBufferBlock chain.
 
 */
-INK_INLINE IOBufferBlock *iobufferblock_skip(IOBufferBlock * b, int *poffset, int *plen, int write);
+inline IOBufferBlock *iobufferblock_skip(IOBufferBlock * b, int *poffset, int *plen, int write);
 #endif

@@ -31,11 +31,6 @@
 #ifndef _P_HostDB_h_
 #define _P_HostDB_h_
 
-#ifndef INLINE_CC
-#undef INK_INLINE
-#define INK_INLINE inline
-#endif
-
 #ifdef SPLIT_DNS
 #include "P_SplitDNS.h"
 #include "P_Cluster.h"

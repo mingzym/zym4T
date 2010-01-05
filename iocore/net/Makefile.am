@@ -26,7 +26,6 @@ libinknet_a_SOURCES = \
   I_Net.h \
   I_NetProcessor.h \
   I_NetVConnection.h \
-  Inline.cc \
   I_Socks.h \
   I_UDPConnection.h \
   I_UDPNet.h \

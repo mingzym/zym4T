@@ -100,7 +100,7 @@ UnixUDPConnection::errorAndDie(int e)
   m_errno = e;
 }
 
-INK_INLINE Action *
+inline Action *
 UDPConnection::recv(Continuation * c)
 {
   UnixUDPConnection *p = (UnixUDPConnection *) this;
@@ -113,7 +113,7 @@ UDPConnection::recv(Continuation * c)
 }
 
 
-INK_INLINE UDPConnection *
+inline UDPConnection *
 new_UDPConnection(int fd)
 {
   return (fd >= 0) ? NEW(new UnixUDPConnection(fd)) : 0;

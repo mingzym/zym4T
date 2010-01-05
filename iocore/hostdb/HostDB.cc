@@ -94,7 +94,7 @@ static
   remoteHostDBQueue[MULTI_CACHE_PARTITIONS];
 
 
-static INK_INLINE int
+static inline int
 corrupt_debugging_callout(HostDBInfo * e, RebuildMC & r)
 {
   Debug("hostdb", "corrupt %d part %d", (char *) &e->app.rr.offset - r.data, r.partition);
@@ -102,7 +102,7 @@ corrupt_debugging_callout(HostDBInfo * e, RebuildMC & r)
 }
 
 
-INK_INLINE void
+inline void
 hostdb_cont_free(HostDBContinuation * cont)
 {
   if (cont->pending_action)

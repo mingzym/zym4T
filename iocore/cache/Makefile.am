@@ -33,7 +33,6 @@ libinkcache_a_SOURCES = \
   I_Cache.h \
   I_CacheDefs.h \
   I_Store.h \
-  Inline.cc \
   NewCacheVC.cc \
   NewCacheVC.h \
   P_Cache.h \

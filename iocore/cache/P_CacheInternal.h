@@ -951,7 +951,7 @@ extern int cache_config_vary_on_user_agent;
 
 
 #ifdef HTTP_CACHE
-INK_INLINE Action *
+inline Action *
 Cache::open_read(Continuation * cont, CacheURL * url, CacheHTTPHdr * request,
                  CacheLookupHttpConfig * params, CacheFragType type)
 {
@@ -962,7 +962,7 @@ Cache::open_read(Continuation * cont, CacheURL * url, CacheHTTPHdr * request,
   return open_read(cont, &md5, request, params, type, (char *) hostname, len);
 }
 
-INK_INLINE void
+inline void
 Cache::generate_key(INK_MD5 * md5, URL * url, CacheHTTPHdr * request)
 {
 #ifdef BROKEN_HACK_FOR_VARY_ON_UA
@@ -1007,7 +1007,7 @@ Cache::generate_key(INK_MD5 * md5, URL * url, CacheHTTPHdr * request)
   url->MD5_get(md5);
 }
 
-INK_INLINE Action *
+inline Action *
 Cache::open_write(Continuation * cont, CacheURL * url, CacheHTTPHdr * request,
                   CacheHTTPInfo * old_info, time_t pin_in_cache, CacheFragType type)
 {
@@ -1021,7 +1021,7 @@ Cache::open_write(Continuation * cont, CacheURL * url, CacheHTTPHdr * request,
 }
 #endif
 
-INK_INLINE unsigned int
+inline unsigned int
 cache_hash(INK_MD5 & md5)
 {
   inku64 f = md5.fold();
@@ -1040,7 +1040,7 @@ cache_hash(INK_MD5 & md5)
 #include "P_ClusterInline.h"
 #endif
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::lookup(Continuation * cont, CacheKey * key, bool local_only,
                        CacheFragType frag_type, char *hostname, int host_len)
 {
@@ -1057,7 +1057,7 @@ CacheProcessor::lookup(Continuation * cont, CacheKey * key, bool local_only,
   return caches[frag_type]->lookup(cont, key, frag_type, hostname, host_len);
 }
 
-INK_INLINE inkcoreapi Action *
+inline inkcoreapi Action *
 CacheProcessor::open_read(Continuation * cont, CacheKey * key, CacheFragType frag_type, char *hostname, int host_len)
 {
 #ifdef CLUSTER_CACHE
@@ -1070,7 +1070,7 @@ CacheProcessor::open_read(Continuation * cont, CacheKey * key, CacheFragType fra
   return caches[frag_type]->open_read(cont, key, frag_type, hostname, host_len);
 }
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::open_read_buffer(Continuation * cont, MIOBuffer * buf, CacheKey * key, CacheFragType frag_type,
                                  char *hostname, int host_len)
 {
@@ -1086,7 +1086,7 @@ CacheProcessor::open_read_buffer(Continuation * cont, MIOBuffer * buf, CacheKey 
 }
 
 
-INK_INLINE inkcoreapi Action *
+inline inkcoreapi Action *
 CacheProcessor::open_write(Continuation * cont, int expected_size, CacheKey * key,
                            CacheFragType frag_type, bool overwrite, time_t pin_in_cache, char *hostname, int host_len)
 {
@@ -1105,7 +1105,7 @@ CacheProcessor::open_write(Continuation * cont, int expected_size, CacheKey * ke
 
 }
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::open_write_buffer(Continuation * cont, MIOBuffer * buf, CacheKey * key, bool overwrite,
                                   CacheFragType frag_type, char *hostname, int host_len)
 {
@@ -1120,7 +1120,7 @@ CacheProcessor::open_write_buffer(Continuation * cont, MIOBuffer * buf, CacheKey
   return NULL;
 }
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::remove(Continuation * cont, CacheKey * key,
                        bool rm_user_agents, bool rm_link, CacheFragType frag_type, char *hostname, int host_len)
 {
@@ -1136,14 +1136,14 @@ CacheProcessor::remove(Continuation * cont, CacheKey * key,
   return caches[frag_type]->remove(cont, key, rm_user_agents, rm_link, frag_type, hostname, host_len);
 }
 
-INK_INLINE Action *
+inline Action *
 scan(Continuation * cont, char *hostname = 0, int host_len = 0, int KB_per_second = 2500)
 {
   return caches[CACHE_FRAG_TYPE_HTTP]->scan(cont, hostname, host_len, KB_per_second);
 }
 
 #ifdef HTTP_CACHE
-INK_INLINE Action *
+inline Action *
 CacheProcessor::lookup(Continuation * cont, URL * url, bool local_only, CacheFragType frag_type)
 {
   (void) local_only;
@@ -1157,7 +1157,7 @@ CacheProcessor::lookup(Continuation * cont, URL * url, bool local_only, CacheFra
 
 
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::open_read_buffer(Continuation * cont, MIOBuffer * buf,
                                  URL * url, CacheHTTPHdr * request, CacheLookupHttpConfig * params, CacheFragType type)
 {
@@ -1172,7 +1172,7 @@ CacheProcessor::open_read_buffer(Continuation * cont, MIOBuffer * buf,
 }
 
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::open_write_buffer(Continuation * cont, MIOBuffer * buf, URL * url,
                                   CacheHTTPHdr * request, CacheHTTPHdr * response, CacheFragType type)
 {
@@ -1191,7 +1191,7 @@ CacheProcessor::open_write_buffer(Continuation * cont, MIOBuffer * buf, URL * ur
 
 
 #ifdef CLUSTER_CACHE
-INK_INLINE Action *
+inline Action *
 CacheProcessor::open_read_internal(int opcode,
                                    Continuation * cont, MIOBuffer * buf,
                                    CacheURL * url,
@@ -1224,7 +1224,7 @@ CacheProcessor::open_read_internal(int opcode,
 #endif
 
 #ifdef CLUSTER_CACHE
-INK_INLINE Action *
+inline Action *
 CacheProcessor::link(Continuation * cont, CacheKey * from, CacheKey * to,
                      CacheFragType type, char *hostname, int host_len)
 {
@@ -1238,7 +1238,7 @@ CacheProcessor::link(Continuation * cont, CacheKey * from, CacheKey * to,
   return caches[type]->link(cont, from, to, type, hostname, host_len);
 }
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::deref(Continuation * cont, CacheKey * key, CacheFragType type, char *hostname, int host_len)
 {
   if (cache_clustering_enabled > 0) {
@@ -1251,19 +1251,19 @@ CacheProcessor::deref(Continuation * cont, CacheKey * key, CacheFragType type, c
 }
 #endif
 
-INK_INLINE Action *
+inline Action *
 CacheProcessor::scan(Continuation * cont, char *hostname, int host_len, int KB_per_second)
 {
   return caches[CACHE_FRAG_TYPE_HTTP]->scan(cont, hostname, host_len, KB_per_second);
 }
 
-INK_INLINE int
+inline int
 CacheProcessor::IsCacheEnabled()
 {
   return CacheProcessor::initialized;
 }
 
-INK_INLINE unsigned int
+inline unsigned int
 CacheProcessor::IsCacheReady(CacheFragType type)
 {
   if (IsCacheEnabled() != CACHE_INITIALIZED)
@@ -1271,13 +1271,13 @@ CacheProcessor::IsCacheReady(CacheFragType type)
   return (cache_ready & type);
 }
 
-INK_INLINE Cache *
+inline Cache *
 local_cache()
 {
   return theCache;
 }
 
-INK_INLINE int
+inline int
 cache_history_dump()
 {
   return 0;

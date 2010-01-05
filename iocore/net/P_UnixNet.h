@@ -246,7 +246,7 @@ get_PollDescriptor(EThread * t)
 
 enum ThrottleType
 { ACCEPT, CONNECT };
-INK_INLINE int
+inline int
 net_connections_to_throttle(ThrottleType t)
 {
 
@@ -270,7 +270,7 @@ net_connections_to_throttle(ThrottleType t)
   return (int) (currently_open * headroom);
 }
 
-INK_INLINE void
+inline void
 check_shedding_warning()
 {
   ink_hrtime t = ink_get_hrtime();
@@ -280,13 +280,13 @@ check_shedding_warning()
   }
 }
 
-INK_INLINE int
+inline int
 emergency_throttle(ink_hrtime now)
 {
   return emergency_throttle_time > now;
 }
 
-INK_INLINE int
+inline int
 check_net_throttle(ThrottleType t, ink_hrtime now)
 {
   int connections = net_connections_to_throttle(t);
@@ -299,7 +299,7 @@ check_net_throttle(ThrottleType t, ink_hrtime now)
   return false;
 }
 
-INK_INLINE void
+inline void
 check_throttle_warning()
 {
   ink_hrtime t = ink_get_hrtime();
@@ -321,7 +321,7 @@ check_throttle_warning()
 // descriptors.  Close the connection immediately, the upper levels
 // will recover.
 //
-INK_INLINE int
+inline int
 check_emergency_throttle(Connection & con)
 {
   int fd = con.fd;
@@ -339,7 +339,7 @@ check_emergency_throttle(Connection & con)
 }
 
 
-INK_INLINE int
+inline int
 change_net_connections_throttle(const char *token, RecDataT data_type, RecData value, void *data)
 {
   (void) token;
@@ -361,7 +361,7 @@ change_net_connections_throttle(const char *token, RecDataT data_type, RecData v
 // 1  - transient
 // 0  - report as warning
 // -1 - fatal
-INK_INLINE int
+inline int
 accept_error_seriousness(int res)
 {
   switch (res) {
@@ -398,7 +398,7 @@ accept_error_seriousness(int res)
   }
 }
 
-INK_INLINE void
+inline void
 check_transient_accept_error(int res)
 {
   ink_hrtime t = ink_get_hrtime();

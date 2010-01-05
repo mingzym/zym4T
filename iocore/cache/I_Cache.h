@@ -24,10 +24,6 @@
 #ifndef _I_CACHE_H__
 #define _I_CACHE_H__
 
-#ifndef INK_INLINE
-#define INK_INLINE
-#endif
-
 #include "inktomi++.h"
 #include "I_EventSystem.h"
 #include "I_AIO.h"
