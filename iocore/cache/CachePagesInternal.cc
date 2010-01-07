@@ -174,7 +174,7 @@ ShowCacheInternal::showPartConnections(int event, Event * e)
                     vc->part->hash_id,
                     url,
                     vc->vio.ndone,
-                    vc->vio.nbytes == INT_MAX ? "all" : nbytes, vc->vio.nbytes == INT_MAX ? "all" : todo));
+                    vc->vio.nbytes == INK64_MAX ? "all" : nbytes, vc->vio.nbytes == INK64_MAX ? "all" : todo));
   }
   part_index++;
   if (part_index < gnpart)
@@ -220,7 +220,7 @@ ShowCacheInternal::showPartEvacuations(int event, Event * e)
                       "<td>%d</td>"     // estimated size
                       "<td>%d</td>"     // reader count
                       "<td>%s</td>"     // done
-                      "</tr>\n", offset, (int) dir_approx_size(&b->dir), b->f.readers, b->f.done ? "yes" : "no"));
+                      "</tr>\n", offset, (int) dir_approx_size(&b->dir), b->readers, b->f.done ? "yes" : "no"));
     }
   }
   part_index++;

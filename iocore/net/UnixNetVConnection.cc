@@ -44,9 +44,7 @@ ClassAllocator<UnixNetVConnection> netVCAllocator("netVCAllocator");
 //
 // Prototypes
 //
-void
-net_update_priority(NetHandler * nh, UnixNetVConnection * vc, NetState * ns, int ndone);
-
+void net_update_priority(NetHandler * nh, UnixNetVConnection * vc, NetState * ns, int ndone);
 
 //
 // Reschedule a UnixNetVConnection by moving VC 
@@ -535,7 +533,7 @@ write_to_net_io(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
 
 
 VIO *
-UnixNetVConnection::do_io_read(Continuation * c, int nbytes, MIOBuffer * buf)
+UnixNetVConnection::do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf)
 {
   ink_assert(!closed);
   if (buf)
@@ -551,14 +549,13 @@ UnixNetVConnection::do_io_read(Continuation * c, int nbytes, MIOBuffer * buf)
   if (buf) {
     if (!read.enabled)
       read.vio.reenable();
-  } else {
+  } else
     disable_read(this);
-  }
   return &read.vio;
 }
 
 VIO *
-UnixNetVConnection::do_io_write(Continuation * acont, int anbytes, IOBufferReader * abuffer, bool owner)
+UnixNetVConnection::do_io_write(Continuation * acont, ink64 anbytes, IOBufferReader * abuffer, bool owner)
 {
   addLogMessage("do_io_write");
   ink_assert(!closed);
@@ -576,9 +573,8 @@ UnixNetVConnection::do_io_write(Continuation * acont, int anbytes, IOBufferReade
   if (abuffer) {
     if (!write.enabled)
       write.vio.reenable();
-  } else {
+  } else
     disable_write(this);
-  }
   return &write.vio;
 }
 
@@ -607,11 +603,10 @@ UnixNetVConnection::do_io_close(int alerrno /* = -1 */ )
   INK_WRITE_MEMORY_BARRIER;
   if (alerrno && alerrno != -1)
     this->lerrno = alerrno;
-  if (alerrno == -1) {
+  if (alerrno == -1)
     closed = 1;
-  } else {
+  else
     closed = -1;
-  }
 }
 
 void
@@ -913,8 +908,6 @@ UnixNetVConnection::netActivity(EThread * lthread)
 {
   net_activity(this, lthread);
 }
-
-
 
 int
 UnixNetVConnection::startEvent(int event, Event * e)

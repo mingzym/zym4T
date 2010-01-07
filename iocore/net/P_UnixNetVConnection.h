@@ -86,8 +86,8 @@ class UnixNetVConnection:public NetVConnection
 {
 public:
 
-  virtual VIO * do_io_read(Continuation * c, int nbytes, MIOBuffer * buf);
-  virtual VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false);
+  virtual VIO * do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf);
+  virtual VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false);
 
   virtual Action *send_OOB(Continuation * cont, char *buf, int len);
   virtual void cancel_OOB();

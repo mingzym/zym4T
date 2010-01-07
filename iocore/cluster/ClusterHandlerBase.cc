@@ -1316,8 +1316,8 @@ ClusterHandler::compute_active_channels()
         printf("ch[%d] vc=0x%p remote_free=%d last_local_free=%d\n", i, vc,
                vc->remote_free, vc->last_local_free);
         printf("  r_bytes=%d r_done=%d w_bytes=%d w_done=%d\n",
-               vc->read.vio.nbytes, vc->read.vio.ndone,
-               vc->write.vio.nbytes, vc->write.vio.ndone);
+               (int)vc->read.vio.nbytes, (int)vc->read.vio.ndone,
+               (int)vc->write.vio.nbytes, (int)vc->write.vio.ndone);
       }
     }
   }

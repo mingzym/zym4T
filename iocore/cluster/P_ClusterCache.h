@@ -371,15 +371,15 @@ struct ClusterVConnectionBase:CacheVConnection
   //                creation callback.
   //
 
-  virtual VIO *do_io_read(Continuation * c, int nbytes, MIOBuffer * buf);
-  virtual VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false);
+  virtual VIO *do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf);
+  virtual VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false);
   virtual void do_io_shutdown(ShutdownHowTo_t howto)
   {
     (void) howto;
     ink_assert(!"shutdown of cluster connection");
   }
   virtual void do_io_close(int lerrno = -1);
-  virtual VIO* do_io_pread(Continuation*, ink64, MIOBuffer*, ink_off_t);
+  virtual VIO* do_io_pread(Continuation*, ink64, MIOBuffer*, ink64);
 
   // Set the timeouts associated with this connection.
   // active_timeout is for the total elasped time of the connection.

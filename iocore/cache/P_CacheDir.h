@@ -161,7 +161,7 @@ struct FreeDir
 
 #define dir_bit(_e, _w, _b) (((_e)->w[_w] >> (_b)) & 1)
 #define dir_set_bit(_e, _w, _b, _v) (_e)->w[_w] = (inku16)(((_e)->w[_w] & ~(1<<(_b))) | (((_v)?1:0)<<(_b)))
-#define dir_offset(_e) ((ink_off_t)                                     \
+#define dir_offset(_e) ((ink64)                                         \
                          (((inku64)(_e)->w[0]) |                        \
                           (((inku64)((_e)->w[1] & 0xFF)) << 16) |       \
                           (((inku64)(_e)->w[4]) << 24)))

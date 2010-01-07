@@ -69,8 +69,8 @@ public:
   // static method to allocate a new cache vc
   static NewCacheVC *alloc(Continuation * cont, URL * url, HttpCacheSM * sm);
   void setWriteVC(CacheHTTPInfo * old_info);
-  VIO *do_io_read(Continuation * c, int nbytes, MIOBuffer * buf);
-  VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false);
+  VIO *do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf);
+  VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false);
   void do_io_close(int lerrno = -1);
 
   void reenable(VIO * vio);
@@ -126,7 +126,7 @@ public:
     ink_assert(!"implemented");
     return -1;
   }
-  VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink_off_t off) {
+  VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink64 offset) {
     ink_assert(!"implemented");
     return 0;
   }

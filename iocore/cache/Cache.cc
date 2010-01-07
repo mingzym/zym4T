@@ -125,9 +125,9 @@ struct PartInitInfo
 void cplist_init();
 static void cplist_update();
 int cplist_reconfigure();
-static int create_partition(int partition_number, int size_in_blocks, int scheme, CachePart * cp);
-static void rebuild_host_table(Cache * cache);
-void register_cache_stats(RecRawStatBlock * rsb, const char *prefix);
+static int create_partition(int partition_number, int size_in_blocks, int scheme, CachePart *cp);
+static void rebuild_host_table(Cache *cache);
+void register_cache_stats(RecRawStatBlock *rsb, const char *prefix);
 
 Queue<CachePart> cp_list;
 int cp_list_len = 0;
@@ -160,7 +160,7 @@ cache_bytes_total(void)
 
 int
 cache_stats_bytes_used_cb(const char *name,
-                          RecDataT data_type, RecData * data, RecRawStatBlock * rsb, int id, void *cookie)
+                          RecDataT data_type, RecData *data, RecRawStatBlock *rsb, int id, void *cookie)
 {
   if (cacheProcessor.initialized == CACHE_INITIALIZED) {
     RecSetGlobalRawStatSum(rsb, id, cache_bytes_used());
@@ -202,7 +202,7 @@ CacheVC::CacheVC():alternate_index(CACHE_ALT_INDEX_DEFAULT)
 }
 
 VIO *
-CacheVC::do_io_read(Continuation * c, int nbytes, MIOBuffer * abuf)
+CacheVC::do_io_read(Continuation *c, ink64 nbytes, MIOBuffer *abuf)
 {
   ink_assert(vio.op == VIO::READ);
   vio.buffer.writer_for(abuf);
@@ -217,15 +217,15 @@ CacheVC::do_io_read(Continuation * c, int nbytes, MIOBuffer * abuf)
 }
 
 VIO *
-CacheVC::do_io_pread(Continuation * c, ink64 nbytes, MIOBuffer * abuf, ink_off_t off)
+CacheVC::do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *abuf, ink64 offset)
 {
   ink_assert(vio.op == VIO::READ);
   vio.buffer.writer_for(abuf);
   vio.set_continuation(c);
-  vio.ndone = off;
+  vio.ndone = offset;
   vio.nbytes = 0;
   vio.vc_server = this;
-  seek_to = off;
+  seek_to = offset;
   ink_assert(c->mutex->thread_holding);
   if (!trigger)
     trigger = c->mutex->thread_holding->schedule_imm_local(this);
@@ -233,7 +233,7 @@ CacheVC::do_io_pread(Continuation * c, ink64 nbytes, MIOBuffer * abuf, ink_off_t
 }
 
 VIO *
-CacheVC::do_io_write(Continuation * c, int nbytes, IOBufferReader * abuf, bool owner)
+CacheVC::do_io_write(Continuation *c, ink64 nbytes, IOBufferReader *abuf, bool owner)
 {
   ink_assert(vio.op == VIO::WRITE);
   ink_assert(!owner);
@@ -258,7 +258,7 @@ CacheVC::do_io_close(int alerrno)
 }
 
 void
-CacheVC::reenable(VIO * avio)
+CacheVC::reenable(VIO *avio)
 {
   Debug("cache_reenable", "reenable %lX", (long) this);
   (void) avio;
@@ -276,7 +276,7 @@ CacheVC::reenable(VIO * avio)
 }
 
 void
-CacheVC::reenable_re(VIO * avio)
+CacheVC::reenable_re(VIO *avio)
 {
   Debug("cache_reenable", "reenable_re %lX", (long) this);
   (void) avio;
@@ -335,7 +335,7 @@ CacheVC::get_http_info(CacheHTTPInfo ** ainfo)
 // calling set_http_info(), but it guarantees that the info will
 // be set before transferring any bytes
 void
-CacheVC::set_http_info(CacheHTTPInfo * ainfo)
+CacheVC::set_http_info(CacheHTTPInfo *ainfo)
 {
 
   ink_assert(!total_len);
@@ -386,31 +386,31 @@ CacheVC::get_disk_io_priority()
 }
 
 int
-Part::begin_read(CacheVC * cont)
+Part::begin_read(CacheVC *cont)
 {
-  // no need for evacuation as the entire document is already in memory
   ink_debug_assert(cont->mutex->thread_holding == this_ethread());
   ink_debug_assert(mutex->thread_holding == this_ethread());
 #ifdef CACHE_STAT_PAGES
   ink_assert(!cont->stat_link.next && !cont->stat_link.prev);
   stat_cache_vcs.enqueue(cont, cont->stat_link);
 #endif
+  // no need for evacuation as the entire document is already in memory
   if (cont->f.single_fragment)
     return 0;
-  EThread *t = cont->mutex->thread_holding;
   int i = dir_evac_bucket(&cont->earliest_dir);
   EvacuationBlock *b;
   for (b = evacuate[i].head; b; b = b->link.next) {
     if (dir_offset(&b->dir) != dir_offset(&cont->earliest_dir))
       continue;
-    if (b->f.readers)
-      b->f.readers = b->f.readers + 1;
+    if (b->readers)
+      b->readers = b->readers + 1;
     return 0;
   }
   // we don't actually need to preserve this block as it is already in
   // memory, but this is easier, and evacuations are rare
+  EThread *t = cont->mutex->thread_holding;
   b = new_EvacuationBlock(t);
-  b->f.readers = 1;
+  b->readers = 1;
   b->dir = cont->earliest_dir;
   b->evac_frags.key = cont->earliest_key;
   evacuate[i].push(b);
@@ -418,10 +418,11 @@ Part::begin_read(CacheVC * cont)
 }
 
 int
-Part::close_read(CacheVC * cont)
+Part::close_read(CacheVC *cont)
 {
   EThread *t = cont->mutex->thread_holding;
   ink_debug_assert(t == this_ethread());
+  ink_debug_assert(t == mutex->thread_holding);
   if (dir_is_empty(&cont->earliest_dir))
     return 1;
   int i = dir_evac_bucket(&cont->earliest_dir);
@@ -432,9 +433,10 @@ Part::close_read(CacheVC * cont)
       b = next;
       continue;
     }
-    if (b->f.readers && !--b->f.readers) {
+    if (b->readers && !--b->readers) {
       evacuate[i].remove(b);
       free_EvacuationBlock(b, t);
+      break;
     }
     b = next;
   }
@@ -882,16 +884,16 @@ Part::db_check(bool fix)
 }
 
 static void
-part_init_data_internal(Part * d)
+part_init_data_internal(Part *d)
 {
   d->buckets = ((d->len - (d->start - d->skip)) / cache_config_min_average_object_size) / DIR_DEPTH;
   d->segments = (d->buckets + (((1<<16)-1)/DIR_DEPTH)) / ((1<<16)/DIR_DEPTH);
   d->buckets = (d->buckets + d->segments - 1) / d->segments;
-  d->start = d->skip + 2 * part_dirlen(d);
+  d->start = d->skip + 2 *part_dirlen(d);
 }
 
 static void
-part_init_data(Part * d) {
+part_init_data(Part *d) {
   // iteratively calculate start + buckets
   part_init_data_internal(d);
   part_init_data_internal(d);
@@ -899,7 +901,7 @@ part_init_data(Part * d) {
 }
 
 void
-part_init_dir(Part * d)
+part_init_dir(Part *d)
 {
   int b, s, l;
 
@@ -916,7 +918,7 @@ part_init_dir(Part * d)
 }
 
 void
-part_clear_init(Part * d)
+part_clear_init(Part *d)
 {
   int dir_len = part_dirlen(d);
   memset(d->raw_dir, 0, dir_len);
@@ -934,7 +936,7 @@ part_clear_init(Part * d)
 }
 
 int
-part_dir_clear(Part * d)
+part_dir_clear(Part *d)
 {
   int dir_len = part_dirlen(d);
   part_clear_init(d);
@@ -1491,7 +1493,7 @@ Part::dir_init_done(int event, void *data)
 }
 
 void
-build_part_hash_table(CacheHostRecord * cp)
+build_part_hash_table(CacheHostRecord *cp)
 {
   int num_parts = cp->num_part;
   unsigned int *mapping = (unsigned int *) xmalloc(sizeof(unsigned int) * num_parts);
@@ -1688,7 +1690,7 @@ Cache::open_done()
 {
 #ifdef NON_MODULAR
   Action *register_ShowCache(Continuation * c, HTTPHdr * h);
-  Action *register_ShowCacheInternal(Continuation * c, HTTPHdr * h);
+  Action *register_ShowCacheInternal(Continuation *c, HTTPHdr *h);
   statPagesManager.register_http("cache", register_ShowCache);
   statPagesManager.register_http("cache-internal", register_ShowCacheInternal);
 #endif
@@ -1767,7 +1769,7 @@ Cache::close()
 }
 
 int
-CacheVC::dead(int event, Event * e)
+CacheVC::dead(int event, Event *e)
 {
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
@@ -1778,7 +1780,7 @@ CacheVC::dead(int event, Event * e)
 #define STORE_COLLISION 1
 
 int
-CacheVC::handleReadDone(int event, Event * e)
+CacheVC::handleReadDone(int event, Event *e)
 {
   NOWARN_UNUSED(e);
   cancel_trigger();
@@ -1884,7 +1886,7 @@ Ldone:
 
 
 int
-CacheVC::handleRead(int event, Event * e)
+CacheVC::handleRead(int event, Event *e)
 {
   NOWARN_UNUSED(e);
   cancel_trigger();
@@ -1936,7 +1938,7 @@ LramHit:
 }
 
 Action *
-Cache::lookup(Continuation * cont, CacheKey * key, CacheFragType type, char *hostname, int host_len)
+Cache::lookup(Continuation *cont, CacheKey *key, CacheFragType type, char *hostname, int host_len)
 {
 
   if (!(CacheProcessor::cache_ready & type)) {
@@ -1965,7 +1967,7 @@ Cache::lookup(Continuation * cont, CacheKey * key, CacheFragType type, char *hos
 
 #ifdef HTTP_CACHE
 Action *
-Cache::lookup(Continuation * cont, CacheURL * url, CacheFragType type)
+Cache::lookup(Continuation *cont, CacheURL *url, CacheFragType type)
 {
   INK_MD5 md5;
 
@@ -1987,7 +1989,7 @@ Cache::lookup(Continuation * cont, CacheURL * url, CacheFragType type)
 // open_write
 
 int
-CacheVC::removeAbortWriter(int event, Event * e)
+CacheVC::removeAbortWriter(int event, Event *e)
 {
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
@@ -2021,7 +2023,7 @@ CacheVC::removeAbortWriter(int event, Event * e)
 // remove code
 
 int
-CacheVC::removeReadDone(int event, Event * e)
+CacheVC::removeReadDone(int event, Event *e)
 {
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
@@ -2083,7 +2085,7 @@ Lcallreturn:
 }
 
 Action *
-Cache::remove(Continuation * cont, CacheKey * key, bool user_agents,
+Cache::remove(Continuation *cont, CacheKey *key, bool user_agents,
               bool link, CacheFragType type, char *hostname, int host_len)
 {
   NOWARN_UNUSED(user_agents);
@@ -2130,7 +2132,7 @@ Cache::remove(Continuation * cont, CacheKey * key, bool user_agents,
 
 #ifdef HTTP_CACHE
 Action *
-Cache::remove(Continuation * cont, CacheURL * url, CacheFragType type)
+Cache::remove(Continuation *cont, CacheURL *url, CacheFragType type)
 {
   INK_MD5 md5;
   url->MD5_get(&md5);
@@ -2443,7 +2445,7 @@ cplist_reconfigure()
 }
 
 int
-create_partition(int partition_number, int size_in_blocks, int scheme, CachePart * cp)
+create_partition(int partition_number, int size_in_blocks, int scheme, CachePart *cp)
 {
   static int curr_part = 0;
   int to_create = size_in_blocks;
@@ -2501,7 +2503,7 @@ create_partition(int partition_number, int size_in_blocks, int scheme, CachePart
 }
 
 void
-rebuild_host_table(Cache * cache)
+rebuild_host_table(Cache *cache)
 {
   build_part_hash_table(&cache->hosttable->gen_host_rec);
   if (cache->hosttable->m_numEntries != 0) {
@@ -2517,7 +2519,7 @@ rebuild_host_table(Cache * cache)
 
 // if generic_host_rec.parts == NULL, what do we do??? 
 Part *
-Cache::key_to_part(CacheKey * key, char *hostname, int host_len)
+Cache::key_to_part(CacheKey *key, char *hostname, int host_len)
 {
   inku32 h = (key->word(2) >> DIR_TAG_WIDTH) % PART_HASH_TABLE_SIZE;
   unsigned short *hash_table = hosttable->gen_host_rec.part_hash_table;
@@ -2547,7 +2549,7 @@ Cache::key_to_part(CacheKey * key, char *hostname, int host_len)
 
 // Register Stats
 void
-register_cache_stats(RecRawStatBlock * rsb, const char *prefix)
+register_cache_stats(RecRawStatBlock *rsb, const char *prefix)
 {
 
   char stat_str[256];
@@ -2911,8 +2913,8 @@ ink_cache_init(ModuleVersion v)
 
 //----------------------------------------------------------------------------
 Action *
-CacheProcessor::open_read(Continuation * cont, URL * url, CacheHTTPHdr * request,
-                          CacheLookupHttpConfig * params, time_t pin_in_cache, CacheFragType type)
+CacheProcessor::open_read(Continuation *cont, URL *url, CacheHTTPHdr *request,
+                          CacheLookupHttpConfig *params, time_t pin_in_cache, CacheFragType type)
 {
 #ifdef CLUSTER_CACHE
   if (cache_clustering_enabled > 0) {
@@ -2957,8 +2959,8 @@ CacheProcessor::open_read(Continuation * cont, URL * url, CacheHTTPHdr * request
 
 //----------------------------------------------------------------------------
 Action *
-CacheProcessor::open_write(Continuation * cont, int expected_size, URL * url,
-                           CacheHTTPHdr * request, CacheHTTPInfo * old_info, time_t pin_in_cache, CacheFragType type)
+CacheProcessor::open_write(Continuation *cont, int expected_size, URL *url,
+                           CacheHTTPHdr *request, CacheHTTPInfo *old_info, time_t pin_in_cache, CacheFragType type)
 {
 #ifdef CLUSTER_CACHE
   if (cache_clustering_enabled > 0) {
@@ -3005,7 +3007,7 @@ CacheProcessor::open_write(Continuation * cont, int expected_size, URL * url,
 
 //----------------------------------------------------------------------------
 Action *
-CacheProcessor::remove(Continuation * cont, URL * url, CacheFragType frag_type)
+CacheProcessor::remove(Continuation *cont, URL *url, CacheFragType frag_type)
 {
 #ifdef CLUSTER_CACHE
   if (cache_clustering_enabled > 0) {

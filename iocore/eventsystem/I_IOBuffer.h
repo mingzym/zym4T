@@ -50,9 +50,9 @@ class VIO;
 // Removing this optimization since this is breaking WMT over HTTP
 //#define WRITE_AND_TRANSFER 
 
-inkcoreapi extern int max_iobuffer_size;
-extern int default_small_iobuffer_size;
-extern int default_large_iobuffer_size; // matched to size of OS buffers
+inkcoreapi extern ink64 max_iobuffer_size;
+extern ink64 default_small_iobuffer_size;
+extern ink64 default_large_iobuffer_size; // matched to size of OS buffers
 
 #if !defined(PURIFY)
 // Define this macro to enable buffer usage tracking.
@@ -112,9 +112,9 @@ enum AllocType
 #define BUFFER_SIZE_NOT_ALLOCATED    DEFAULT_BUFFER_SIZES
 #define BUFFER_SIZE_INDEX_IS_XMALLOCED(_size_index) (_size_index < 0)
 #define BUFFER_SIZE_INDEX_IS_FAST_ALLOCATED(_size_index) \
-  ((unsigned int)_size_index  < DEFAULT_BUFFER_SIZES)
+  (((inku64)_size_index) < DEFAULT_BUFFER_SIZES)
 #define BUFFER_SIZE_INDEX_IS_CONSTANT(_size_index) \
-  ((unsigned int)_size_index >= DEFAULT_BUFFER_SIZES)
+  (_size_index >= DEFAULT_BUFFER_SIZES)
 
 #define BUFFER_SIZE_FOR_XMALLOC(_size) (-(_size))
 #define BUFFER_SIZE_INDEX_FOR_XMALLOC_SIZE(_size) (-(_size))
@@ -179,7 +179,7 @@ public:
     @return number of bytes allocated for the '_data' member.
 
   */
-  int block_size();
+  ink64 block_size();
 
   /**
     Frees the memory managed by this IOBufferData.  Deallocates the
@@ -199,7 +199,7 @@ public:
     @param size_index
     @param type of allocation to use; see remarks section.
   */
-  void alloc(int size_index, AllocType type = DEFAULT_ALLOC);
+  void alloc(ink64 size_index, AllocType type = DEFAULT_ALLOC);
 
   /**
     Provides access to the allocated memory. Returns the address of the
@@ -233,7 +233,7 @@ public:
   */
   virtual void free();
 
-  int _size_index;
+  ink64 _size_index;
 
   /**
     Type of allocation used for the managed memory. Stores the type of
@@ -340,9 +340,9 @@ public:
     @return bytes occupied by the inuse area.
 
   */
-  int size()
+  ink64 size()
   {
-    return (int) (_end - _start);
+    return (ink64) (_end - _start);
   }
 
   /**
@@ -352,9 +352,9 @@ public:
     @return bytes available for reading from the inuse area.
 
   */
-  int read_avail()
+  ink64 read_avail()
   {
-    return (int) (_end - _start);
+    return (ink64) (_end - _start);
   }
 
   /**
@@ -363,9 +363,9 @@ public:
 
     @return space available for writing in this IOBufferBlock.
   */
-  int write_avail()
+  ink64 write_avail()
   {
-    return (int) (_buf_end - _end);
+    return (ink64) (_buf_end - _end);
   }
 
   /**
@@ -378,7 +378,7 @@ public:
       IOBufferBlock.
 
   */
-  int block_size()
+  ink64 block_size()
   {
     return data->block_size();
   }
@@ -392,7 +392,7 @@ public:
       the inuse area.
 
   */
-  void consume(int len);
+  void consume(ink64 len);
 
   /**
     Increase the inuse area of the block. Adds 'len' bytes to the inuse
@@ -404,7 +404,7 @@ public:
       or equal to the value of write_avail().
 
   */
-  void fill(int len);
+  void fill(ink64 len);
 
   /**
     Reset the inuse area. The start and end of the inuse area are reset
@@ -443,7 +443,7 @@ public:
     section in MIOBuffer.
 
   */
-  void alloc(int i = default_large_iobuffer_size);
+  void alloc(ink64 i = default_large_iobuffer_size);
 
   /**
     Clear the IOBufferData this IOBufferBlock handles. Clears this
@@ -465,13 +465,13 @@ public:
       and to mark its start.
 
   */
-  void set(IOBufferData * d, int len = 0, int offset = 0);
-  void set_internal(void *b, int len, int asize_index);
-  void realloc_set_internal(void *b, int buf_size, int asize_index);
-  void realloc(void *b, int buf_size);
-  void realloc(int i);
-  void realloc_xmalloc(void *b, int buf_size);
-  void realloc_xmalloc(int buf_size);
+  void set(IOBufferData * d, ink64 len = 0, ink64 offset = 0);
+  void set_internal(void *b, ink64 len, ink64 asize_index);
+  void realloc_set_internal(void *b, ink64 buf_size, ink64 asize_index);
+  void realloc(void *b, ink64 buf_size);
+  void realloc(ink64 i);
+  void realloc_xmalloc(void *b, ink64 buf_size);
+  void realloc_xmalloc(ink64 buf_size);
 
   /**
     Frees the IOBufferBlock object and its underlying memory.
@@ -564,7 +564,7 @@ public:
     @return bytes of data available across all the buffers.
 
   */
-  int read_avail();
+  ink64 read_avail();
 
   /**
     Number of IOBufferBlocks with data in the block list. Returns the
@@ -585,7 +585,7 @@ public:
       buffer.
 
   */
-  int block_read_avail();
+  ink64 block_read_avail();
 
   void skip_empty_blocks();
 
@@ -616,7 +616,7 @@ public:
       to read_avail().
 
   */
-  void consume(int n);
+  void consume(ink64 n);
 
   /**
     Create another reader with access to the same data as this
@@ -690,7 +690,7 @@ public:
 
     @param c character to look for.
     @param len number of characters to check. If len exceeds the number
-      of bytes available on the buffer or INT_MAX is passed in, the
+      of bytes available on the buffer or INK64_MAX is passed in, the
       number of bytes available to the reader is used. It is independent
       of the offset value.
     @param offset number of the bytes to skip over before beginning
@@ -699,7 +699,7 @@ public:
       ocurrence.
 
   */
-  inkcoreapi int memchr(char c, int len = INT_MAX, int offset = 0);
+  inkcoreapi ink64 memchr(char c, ink64 len = INK64_MAX, ink64 offset = 0);
 
   /**
     Copies and consumes data. Copies len bytes of data from the buffer
@@ -715,7 +715,7 @@ public:
     @return number of bytes copied and consumed.
 
   */
-  inkcoreapi int read(void *buf, int len);
+  inkcoreapi ink64 read(void *buf, ink64 len);
 
   /**
     Copy data but do not consume it. Copies 'len' bytes of data from
@@ -726,7 +726,7 @@ public:
     @param buf in which to place the data. The pointer is modified after
       the call and points one position after the end of the data copied.
     @param len bytes to copy. If len exceeds the bytes available to the
-      reader or INT_MAX is passed in, the number of bytes available is
+      reader or INK64_MAX is passed in, the number of bytes available is
       used instead. No data is consumed from the reader in this operation.
     @param offset bytes to skip from the current position. The parameter
       is modified after the call.
@@ -734,7 +734,7 @@ public:
       parameter buf is set to this value also.
 
   */
-  inkcoreapi char *memcpy(void *buf, int len = INT_MAX, int offset = 0);
+  inkcoreapi char *memcpy(void *buf, ink64 len = INK64_MAX, ink64 offset = 0);
 
   /**
     Subscript operator. Returns a reference to the character at the
@@ -747,7 +747,7 @@ public:
     @return reference to the character in that position.
 
   */
-  char &operator[] (int i);
+  char &operator[] (ink64 i);
 
   MIOBuffer *writer()
   {
@@ -774,10 +774,10 @@ public:
     of the available data.
 
   */
-  int start_offset;
-  int size_limit;
+  ink64 start_offset;
+  ink64 size_limit;
 
-IOBufferReader():accessor(NULL), mbuf(NULL), start_offset(0), size_limit(MAXINT) {
+  IOBufferReader():accessor(NULL), mbuf(NULL), start_offset(0), size_limit(INK64_MAX) {
   }
 };
 
@@ -809,7 +809,7 @@ public:
     @param len number of bytes to add to the inuse area of the block.
 
   */
-  void fill(int len);
+  void fill(ink64 len);
 
   /**
     Adds a block to the end of the block list. The block added to list
@@ -825,7 +825,7 @@ public:
     buffer block sizes.
 
   */
-  void append_block(int asize_index);
+  void append_block(ink64 asize_index);
 
   /**
     Adds new block to the end of block list using the block size for
@@ -841,7 +841,7 @@ public:
     by the buffer once all readers on the buffer have consumed it.
 
   */
-  void append_xmalloced(void *b, int len);
+  void append_xmalloced(void *b, ink64 len);
 
   /**
     Adds by reference len bytes of data pointed to by b to the end of the
@@ -851,7 +851,7 @@ public:
     have consumed it.
 
   */
-  void append_fast_allocated(void *b, int len, int fast_size_index);
+  void append_fast_allocated(void *b, ink64 len, ink64 fast_size_index);
 
   /**
     Adds the nbytes worth of data pointed by rbuf to the buffer. The
@@ -860,7 +860,7 @@ public:
     control. Returns the number of bytes added.
 
   */
-  inkcoreapi int write(const void *rbuf, int nbytes);
+  inkcoreapi ink64 write(const void *rbuf, ink64 nbytes);
 
 #ifdef WRITE_AND_TRANSFER
   /**
@@ -869,7 +869,7 @@ public:
     this space becomes available to the copy.
 
   */
-  inkcoreapi int write_and_transfer_left_over_space(IOBufferReader * r, int len = MAXINT, int offset = 0);
+  inkcoreapi ink64 write_and_transfer_left_over_space(IOBufferReader * r, ink64 len = INK64_MAX, ink64 offset = 0);
 #endif
 
   /**
@@ -897,9 +897,9 @@ public:
     rather than sharing blocks to prevent a build of blocks on the buffer.
 
   */
-  inkcoreapi int write(IOBufferReader * r, int len = MAXINT, int offset = 0);
+  inkcoreapi ink64 write(IOBufferReader * r, ink64 len = INK64_MAX, ink64 offset = 0);
 
-  int remove_append(IOBufferReader *);
+  ink64 remove_append(IOBufferReader *);
 
   /**
     Returns a pointer to the first writable block on the block chain.
@@ -943,7 +943,7 @@ public:
     by first_write_block()).
 
   */
-  int block_write_avail();
+  ink64 block_write_avail();
 
   /**
     Returns the amount of space of available for writing on all writable
@@ -951,7 +951,7 @@ public:
     block chain.
 
   */
-  int current_write_avail();
+  ink64 current_write_avail();
 
   /**
     Adds blocks for writing if the watermark criteria are met. Returns
@@ -959,19 +959,19 @@ public:
     on the block chain after a block due to the watermark criteria.
 
   */
-  int write_avail();
+  ink64 write_avail();
 
   /**
     Returns the default data block size for this buffer.
 
   */
-  int block_size();
+  ink64 block_size();
 
   /**
     Returns the default data block size for this buffer.
 
   */
-  int total_size()
+  ink64 total_size()
   {
     return block_size();
   }
@@ -1006,7 +1006,7 @@ public:
   {
     return current_write_avail() <= water_mark;
   }
-  void set_size_index(int size);
+  void set_size_index(ink64 size);
 
   /**
     Allocates a new IOBuffer reader and sets it's its 'accessor' field
@@ -1050,12 +1050,12 @@ public:
   */
   void dealloc_all_readers();
 
-  void set(void *b, int len);
-  void set_xmalloced(void *b, int len);
-  void alloc(int i = default_large_iobuffer_size);
-  void alloc_xmalloc(int buf_size);
+  void set(void *b, ink64 len);
+  void set_xmalloced(void *b, ink64 len);
+  void alloc(ink64 i = default_large_iobuffer_size);
+  void alloc_xmalloc(ink64 buf_size);
   void append_block_internal(IOBufferBlock * b);
-  int puts(char *buf, int len);
+  ink64 puts(char *buf, ink64 len);
 
   // internal interface
 
@@ -1063,7 +1063,7 @@ public:
   {
     return !_writer;
   }
-  int max_read_avail();
+  ink64 max_read_avail();
   int max_block_count();
   void check_add_block();
 
@@ -1100,24 +1100,24 @@ public:
     water_mark = 0;
   }
 
-  void realloc(int i)
+  void realloc(ink64 i)
   {
     _writer->realloc(i);
   }
-  void realloc(void *b, int buf_size)
+  void realloc(void *b, ink64 buf_size)
   {
     _writer->realloc(b, buf_size);
   }
-  void realloc_xmalloc(void *b, int buf_size)
+  void realloc_xmalloc(void *b, ink64 buf_size)
   {
     _writer->realloc_xmalloc(b, buf_size);
   }
-  void realloc_xmalloc(int buf_size)
+  void realloc_xmalloc(ink64 buf_size)
   {
     _writer->realloc_xmalloc(buf_size);
   }
 
-  int size_index;
+  ink64 size_index;
 
   /**
     Determines when to stop writing or reading. The watermark is the
@@ -1127,7 +1127,7 @@ public:
     no matter how small.
 
   */
-  int water_mark;
+  ink64 water_mark;
 
   // DEPRECATED
   Link<MIOBuffer> link;
@@ -1139,8 +1139,8 @@ public:
   const char *_location;
 #endif
 
-  MIOBuffer(void *b, int bufsize, int aWater_mark);
-  MIOBuffer(int default_size_index);
+  MIOBuffer(void *b, ink64 bufsize, ink64 aWater_mark);
+  MIOBuffer(ink64 default_size_index);
   MIOBuffer();
   ~MIOBuffer();
 };
@@ -1160,11 +1160,11 @@ struct MIOBufferAccessor
     return mbuf;
   }
 
-  int block_size()
+  ink64 block_size()
   {
     return mbuf->block_size();
   }
-  int total_size()
+  ink64 total_size()
   {
     return block_size();
   }
@@ -1206,7 +1206,7 @@ inline MIOBuffer * new_MIOBuffer_internal(
 #ifdef TRACK_BUFFER_USER
                                                const char *loc,
 #endif
-                                               int size_index = default_large_iobuffer_size);
+                                               ink64 size_index = default_large_iobuffer_size);
 
 #ifdef TRACK_BUFFER_USER
 class MIOBuffer_tracker
@@ -1217,7 +1217,7 @@ public:
     MIOBuffer_tracker(const char *_loc):loc(_loc)
   {
   }
-  MIOBuffer *operator() (int size_index = default_large_iobuffer_size) {
+  MIOBuffer *operator() (ink64 size_index = default_large_iobuffer_size) {
     return new_MIOBuffer_internal(loc, size_index);
   }
 
@@ -1228,7 +1228,7 @@ inline MIOBuffer * new_empty_MIOBuffer_internal(
 #ifdef TRACK_BUFFER_USER
                                                      const char *loc,
 #endif
-                                                     int size_index = default_large_iobuffer_size);
+                                                     ink64 size_index = default_large_iobuffer_size);
 
 #ifdef TRACK_BUFFER_USER
 class Empty_MIOBuffer_tracker
@@ -1239,7 +1239,7 @@ public:
     Empty_MIOBuffer_tracker(const char *_loc):loc(_loc)
   {
   }
-  MIOBuffer *operator() (int size_index = default_large_iobuffer_size) {
+  MIOBuffer *operator() (ink64 size_index = default_large_iobuffer_size) {
     return new_empty_MIOBuffer_internal(loc, size_index);
   }
 };
@@ -1265,7 +1265,7 @@ inline IOBufferBlock * new_IOBufferBlock_internal(
 #ifdef TRACK_BUFFER_USER
                                                        const char *loc,
 #endif
-                                                       IOBufferData * d, int len = 0, int offset = 0);
+                                                       IOBufferData * d, ink64 len = 0, ink64 offset = 0);
 
 #ifdef TRACK_BUFFER_USER
 class IOBufferBlock_tracker
@@ -1280,7 +1280,7 @@ public:
   {
     return new_IOBufferBlock_internal(loc);
   }
-  IOBufferBlock *operator() (IOBufferData * d, int len = 0, int offset = 0) {
+  IOBufferBlock *operator() (IOBufferData * d, ink64 len = 0, ink64 offset = 0) {
     return new_IOBufferBlock_internal(loc, d, len, offset);
   }
 
@@ -1299,20 +1299,20 @@ inline IOBufferData *new_IOBufferData_internal(
 #ifdef TRACK_BUFFER_USER
                                                     const char *location,
 #endif
-                                                    int size_index = default_large_iobuffer_size,
+                                                    ink64 size_index = default_large_iobuffer_size,
                                                     AllocType type = DEFAULT_ALLOC);
 
 inline IOBufferData *new_xmalloc_IOBufferData_internal(
 #ifdef TRACK_BUFFER_USER
                                                             const char *location,
 #endif
-                                                            void *b, int size);
+                                                            void *b, ink64 size);
 
 inline IOBufferData *new_constant_IOBufferData_internal(
 #ifdef TRACK_BUFFER_USER
                                                              const char *loc,
 #endif
-                                                             void *b, int size);
+                                                             void *b, ink64 size);
 
 
 #ifdef TRACK_BUFFER_USER
@@ -1324,7 +1324,7 @@ public:
     IOBufferData_tracker(const char *_loc):loc(_loc)
   {
   }
-  IOBufferData *operator() (int size_index = default_large_iobuffer_size, AllocType type = DEFAULT_ALLOC) {
+  IOBufferData *operator() (ink64 size_index = default_large_iobuffer_size, AllocType type = DEFAULT_ALLOC) {
     return new_IOBufferData_internal(loc, size_index, type);
   }
 
@@ -1345,8 +1345,8 @@ new_constant_IOBufferData_internal(RES_PATH("memory/IOBuffer/"), \
 #define  new_constant_IOBufferData new_constant_IOBufferData_internal
 #endif
 
-inline int iobuffer_size_to_index(unsigned int size, int max = max_iobuffer_size);
-inline int index_to_buffer_size(int idx);
+inline ink64 iobuffer_size_to_index(ink64 size, ink64 max = max_iobuffer_size);
+inline ink64 index_to_buffer_size(ink64 idx);
 /**
   Clone a IOBufferBlock chain. Used to snarf a IOBufferBlock chain
   w/o copy.
@@ -1357,7 +1357,7 @@ inline int index_to_buffer_size(int idx);
   @return ptr to head of new IOBufferBlock chain.
 
 */
-inline IOBufferBlock *iobufferblock_clone(IOBufferBlock * b, int offset, int len);
+inline IOBufferBlock *iobufferblock_clone(IOBufferBlock * b, ink64 offset, ink64 len);
 /**
   Skip over specified bytes in chain. Used for dropping references.
 
@@ -1369,5 +1369,5 @@ inline IOBufferBlock *iobufferblock_clone(IOBufferBlock * b, int offset, int len
   @return ptr to head of new IOBufferBlock chain.
 
 */
-inline IOBufferBlock *iobufferblock_skip(IOBufferBlock * b, int *poffset, int *plen, int write);
+inline IOBufferBlock *iobufferblock_skip(IOBufferBlock * b, ink64 *poffset, ink64 *plen, ink64 write);
 #endif

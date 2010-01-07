@@ -160,7 +160,7 @@ public:
     @return vio
 
   */
-  virtual VIO * do_io_read(Continuation * c, int nbytes, MIOBuffer * buf) = 0;
+  virtual VIO * do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf) = 0;
 
   /**
     Initiates write. Thread-safe, may be called when not handling
@@ -196,7 +196,7 @@ public:
     @return vio pointer
 
   */
-  virtual VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false) = 0;
+  virtual VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false) = 0;
 
   /**
     Closes the vconnection. A state machine MUST call do_io_close()

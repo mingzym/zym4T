@@ -247,7 +247,7 @@ RamCache::print_stats(FILE * fp, int verbose)
       for (int j = 0; j < partition_size; j++) {
         RamCacheEntry *e = partition[i].bucket[j].head;
         while (e) {
-          printf("\t\t%9d %9d\n", e->data->_size_index, e->data->block_size());
+          printf("\t\t%9d %9d\n", (int)e->data->_size_index, (int)e->data->block_size());
           total += e->data->block_size();
           n++;
           e = e->hash_link.next;
@@ -260,7 +260,7 @@ RamCache::print_stats(FILE * fp, int verbose)
       {
         RamCacheEntry *e = partition[i].lru.head;
         while (e) {
-          printf("\t\t%9d %9d\n", e->data->_size_index, e->data->block_size());
+          printf("\t\t%9d %9d\n", (int)e->data->_size_index, (int)e->data->block_size());
           total += e->data->block_size();
           n++;
           e = e->lru_link.next;

@@ -124,8 +124,9 @@ struct CacheProcessor:public Processor
 
 struct CacheVConnection:public VConnection
 {
-  VIO *do_io_read(Continuation * c, int nbytes, MIOBuffer * buf) = 0;
-  VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false) = 0;
+  VIO *do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf) = 0;
+  virtual VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink64 offset) = 0;
+  VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false) = 0;
   void do_io_close(int lerrno = -1) = 0;
   void reenable(VIO * avio) = 0;
   void reenable_re(VIO * avio) = 0;
@@ -137,8 +138,6 @@ struct CacheVConnection:public VConnection
 
   virtual int get_header(void **ptr, int *len) = 0;
   virtual int set_header(void *ptr, int len) = 0;
-  // do_io_pread() may only be issued once in response to CACHE_EVENT_OPEN_READ
-  virtual VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink_off_t off) = 0;
 
 #ifdef HTTP_CACHE
   virtual void set_http_info(CacheHTTPInfo * info) = 0;

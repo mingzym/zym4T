@@ -33,6 +33,8 @@
 #include "inktomi++.h"
 #include "api/include/InkAPI.h"
 
+class EvacuationBlock;
+
 // Compilation Options
 
 //#define HIT_EVACUATE                    1
@@ -220,9 +222,9 @@ struct CacheVC:CacheVConnection
 {
   CacheVC();
 
-  VIO *do_io_read(Continuation * c, int nbytes, MIOBuffer * buf);
-  VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink_off_t off);
-  VIO *do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false);
+  VIO *do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf);
+  VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink64 offset);
+  VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false);
   void do_io_close(int lerrno = -1);
   void reenable(VIO * avio);
   void reenable_re(VIO * avio);
@@ -406,23 +408,24 @@ struct CacheVC:CacheVConnection
   int base_stat;
   int recursive;
   int closed;
-  inku32 docpos;                // read position in 'buf'
-  int offset;                   // offset into 'blocks' of data to write
-  inku64 length;                // length of data available to write
+  ink64 seek_to;                // pread offset
+  ink64 offset;                 // offset into 'blocks' of data to write
+  ink64 writer_offset;          // offset of the writer for reading from a writer
+  ink64 length;                 // length of data available to write
+  ink64 doc_pos;                // read position in 'buf'
   inku64 write_pos;             // length written
   inku64 total_len;             // total length written and available to write
-  inku64 doc_len;
+  inku64 doc_len;               // total_length (of the selected alternate for HTTP)
   inku64 update_len;
-  inku64 seek_to;
   int fragment;
   int scan_msec_delay;
-  int writer_offset;
   CacheVC *write_vc;
   char *hostname;
   int host_len;
   int header_to_write_len;  
   void *header_to_write;
   short writer_lock_retry;
+
   union
   {
     inku32 flags;
@@ -579,7 +582,7 @@ CacheVC::calluser(int event)
 inline int
 CacheVC::do_read_call(CacheKey * akey)
 {
-  docpos = 0;
+  doc_pos = 0;
   read_key = akey;
   io.aiocb.aio_nbytes = dir_approx_size(&dir);
   PUSH_HANDLER(&CacheVC::handleRead);

@@ -110,19 +110,19 @@ struct EvacuationBlock
     unsigned int init;
     struct
     {
-      unsigned int readers:16;  // normal readers
-      unsigned int done:1;      // has been evacuated
-      unsigned int pinned:1;    // check pinning timeout
+      unsigned int done:1;              // has been evacuated
+      unsigned int pinned:1;            // check pinning timeout
       unsigned int evacuate_head:1;     // check pinning timeout
-      unsigned int unused:13;
+      unsigned int unused:29;
     } f;
   };
+  int readers;
   Dir dir;
   Dir new_dir;
   // we need to have a list of evacuationkeys because of collision.
   EvacuationKey evac_frags;
   CacheVC *earliest_evacuator;
-    Link<EvacuationBlock> link;
+  Link<EvacuationBlock> link;
 };
 
 struct Part:public Continuation
@@ -451,6 +451,7 @@ new_EvacuationBlock(EThread * t)
 {
   EvacuationBlock *b = THREAD_ALLOC(evacuationBlockAllocator, t);
   b->init = 0;
+  b->readers = 0;
   b->earliest_evacuator = 0;
   b->evac_frags.link.next = 0;
   return b;

@@ -84,7 +84,7 @@ VConnection()
 //////////////////////////////////////////////////////////////////////////////
 
 static inline VIO *
-vc_do_io_write(VConnection * vc, Continuation * cont, int nbytes, MIOBuffer * buf, int offset)
+vc_do_io_write(VConnection * vc, Continuation * cont, ink64 nbytes, MIOBuffer * buf, ink64 offset)
 {
   IOBufferReader *reader = buf->alloc_reader();
 
@@ -95,7 +95,7 @@ vc_do_io_write(VConnection * vc, Continuation * cont, int nbytes, MIOBuffer * bu
 }
 
 inline VIO *
-VConnection::do_io(int op, Continuation * c, int nbytes, MIOBuffer * cb, int data)
+VConnection::do_io(int op, Continuation * c, ink64 nbytes, MIOBuffer * cb, int data)
 {
   switch (op) {
   case VIO::READ:

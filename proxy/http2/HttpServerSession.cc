@@ -119,13 +119,13 @@ HttpServerSession::new_connection(NetVConnection * new_vc)
 }
 
 VIO *
-HttpServerSession::do_io_read(Continuation * c, int nbytes, MIOBuffer * buf)
+HttpServerSession::do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf)
 {
   return server_vc->do_io_read(c, nbytes, buf);
 }
 
 VIO *
-HttpServerSession::do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner)
+HttpServerSession::do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner)
 {
   return server_vc->do_io_write(c, nbytes, buf, owner);
 }

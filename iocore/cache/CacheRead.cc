@@ -380,7 +380,7 @@ CacheVC::openReadFromWriter(int event, Event * e)
         ink_assert(doc_len == doc->data_len());
         length = doc_len;
         f.single_fragment = 1;
-        docpos = 0;
+        doc_pos = 0;
         earliest_key = key;
         dir_clean(&first_dir);
         dir_clean(&earliest_dir);
@@ -419,7 +419,7 @@ CacheVC::openReadFromWriter(int event, Event * e)
   length = write_vc->length;
   // copy the vector
   f.single_fragment = !write_vc->fragment;        // single fragment doc
-  docpos = 0;
+  doc_pos = 0;
   earliest_key = write_vc->earliest_key;
   ink_assert(earliest_key == key);
   doc_len = write_vc->total_len;
@@ -449,7 +449,7 @@ CacheVC::openReadFromWriterMain(int event, Event * e)
   ink64 ntodo = vio.ntodo();
   if (ntodo <= 0)
     return EVENT_CONT;
-  if (length < (doc_len - vio.ndone)) {
+  if (length < ((ink64)doc_len) - vio.ndone) {
     Debug("cache_read_agg", "truncation %X", earliest_key.word(0));
     if (is_action_tag_set("cache")) {
       ink_release_assert(false);
@@ -460,9 +460,9 @@ CacheVC::openReadFromWriterMain(int event, Event * e)
   }
   /* its possible that the user did a do_io_close before 
      openWriteWriteDone was called. */
-  if (length > (doc_len - vio.ndone)) {
+  if (length > ((ink64)doc_len) - vio.ndone) {
     ink64 skip_bytes = length - (doc_len - vio.ndone);
-    iobufferblock_skip(writer_buf, &writer_offset, (int*)&length, skip_bytes);
+    iobufferblock_skip(writer_buf, &writer_offset, &length, skip_bytes);
   }
   ink64 bytes = length;
   if (bytes > vio.ntodo())
@@ -474,7 +474,7 @@ CacheVC::openReadFromWriterMain(int event, Event * e)
     return EVENT_DONE;
   }
   b = iobufferblock_clone(writer_buf, writer_offset, bytes);
-  writer_buf = iobufferblock_skip(writer_buf, &writer_offset, (int*)&length, bytes);
+  writer_buf = iobufferblock_skip(writer_buf, &writer_offset, &length, bytes);
   vio.buffer.mbuf->append_block(b);
   vio.ndone += bytes;
   if (vio.ntodo() <= 0) {
@@ -526,32 +526,29 @@ CacheVC::openReadReadDone(int event, Event * e)
   if (event == EVENT_IMMEDIATE)
     return EVENT_CONT;
   set_io_not_in_progress();
-  if (event == AIO_EVENT_DONE && !io.ok())
-    goto Lerror;
-  if (last_collision &&         // no missed lock
-      dir_valid(part, &dir))    // object still valid
-  {
-    doc = (Doc *) buf->data();
-    if (doc->magic != DOC_MAGIC) {
-      char tmpstring[100];
-      if (doc->magic == DOC_CORRUPT)
-        Warning("Middle: Doc checksum does not match for %s", key.string(tmpstring));
-      else
-        Warning("Middle: Doc magic does not match for %s", key.string(tmpstring));
-      goto Lerror;
-    }
-    if (doc->key == key) {
-      fragment++;
-      docpos = doc->prefix_len();
-      next_CacheKey(&key, &key);
-      SET_HANDLER(&CacheVC::openReadMain);
-      return openReadMain(event, e);
-    }
-  }
   {
     CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
     if (!lock)
       VC_SCHED_LOCK_RETRY();
+    if (event == AIO_EVENT_DONE && !io.ok()) {
+      dir_delete(&earliest_key, part, &earliest_dir);
+      goto Lerror;
+    }
+    if (last_collision &&         // no missed lock
+        dir_valid(part, &dir))    // object still valid
+    {
+      doc = (Doc *) buf->data();
+      if (doc->magic != DOC_MAGIC) {
+        char tmpstring[100];
+        if (doc->magic == DOC_CORRUPT)
+          Warning("Middle: Doc checksum does not match for %s", key.string(tmpstring));
+        else
+          Warning("Middle: Doc magic does not match for %s", key.string(tmpstring));
+        goto Lerror;
+      }
+      if (doc->key == key)
+        goto LreadMain;
+    }
     if (last_collision && dir_offset(&dir) != dir_offset(last_collision))
       last_collision = 0;       // object has been/is being overwritten
     if (dir_probe(&key, part, &dir, &last_collision)) {
@@ -567,33 +564,35 @@ CacheVC::openReadReadDone(int event, Event * e)
             Debug("cache_read_agg", "%x: key: %X ReadRead complete: %d", 
                   this, first_key.word(1), (int)vio.ndone);
             doc_len = vio.ndone;
-            MUTEX_RELEASE(lock);
-            calluser(VC_EVENT_EOS);
-            return EVENT_DONE;
+            goto Ldone;
           }
         }
         Debug("cache_read_agg", "%x: key: %X ReadRead writer aborted: %d", 
               this, first_key.word(1), (int)vio.ndone);
-        MUTEX_RELEASE(lock);
-        calluser(VC_EVENT_ERROR);
-        return EVENT_DONE;
+        goto Lerror;
       }
       Debug("cache_read_agg", "%x: key: %X ReadRead retrying: %d", this, first_key.word(1), (int)vio.ndone);
-      VC_SCHED_WRITER_RETRY();
+      VC_SCHED_WRITER_RETRY(); // wait for writer
     }
+    // fall through for truncated documents
   }
 Lerror:
-  if (is_action_tag_set("cache"))
-    ink_release_assert(false);
-  // remove the directory entry
-  dir_delete_lock(&earliest_key, part, mutex, &earliest_dir);
   char tmpstring[100];
   Warning("Document truncated for %s", earliest_key.string(tmpstring));
   calluser(VC_EVENT_ERROR);
   return EVENT_CONT;
+Ldone:
+  calluser(VC_EVENT_EOS);
+  return EVENT_DONE;
 Lcallreturn:
   handleEvent(AIO_EVENT_DONE, 0);
   return EVENT_CONT;
+LreadMain:
+  fragment++;
+  doc_pos = doc->prefix_len();
+  next_CacheKey(&key, &key);
+  SET_HANDLER(&CacheVC::openReadMain);
+  return openReadMain(event, e);
 }
 
 int
@@ -605,10 +604,10 @@ CacheVC::openReadMain(int event, Event * e)
   cancel_trigger();
   Doc *doc = (Doc *) buf->data();
   ink64 ntodo = vio.ntodo();
-  ink64 bytes = doc->len - docpos;
+  ink64 bytes = doc->len - doc_pos;
   IOBufferBlock *b = NULL;
   if (seek_to) { // handle do_io_pread
-    if (seek_to >= doc_len) {
+    if (seek_to >= (int)doc_len) {
       vio.ndone = doc_len;
       calluser(VC_EVENT_EOS);
       return EVENT_DONE;
@@ -624,7 +623,7 @@ CacheVC::openReadMain(int event, Event * e)
         Frag *frag = doc->frags();
         // skip to correct key, key is already set to next fragment
         for (inku32 i = 1; i <= doc->nfrags(); i++) {
-          if (seek_to < frag[i].offset) break;
+          if (seek_to < (int)frag[i].offset) break;
           next_CacheKey(&key, &key);
         }
         seek_to = 0;
@@ -641,11 +640,11 @@ CacheVC::openReadMain(int event, Event * e)
     goto Lread;
   if (bytes > vio.ntodo())
     bytes = vio.ntodo();
-  b = new_IOBufferBlock(buf, bytes, docpos);
+  b = new_IOBufferBlock(buf, bytes, doc_pos);
   b->_buf_end = b->_end;
   vio.buffer.mbuf->append_block(b);
   vio.ndone += bytes;
-  docpos += bytes;
+  doc_pos += bytes;
   if (vio.ntodo() <= 0) {
     calluser(VC_EVENT_READ_COMPLETE);
     return EVENT_DONE;
@@ -673,7 +672,7 @@ Lread: {
     cancel_trigger();
     CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
     if (!lock) {
-      SET_HANDLER(&CacheVC::openReadReadDone);
+      SET_HANDLER(&CacheVC::openReadMain);
       VC_SCHED_LOCK_RETRY();
     }
     if (dir_probe(&key, part, &dir, &last_collision)) {
@@ -690,9 +689,7 @@ Lread: {
             Debug("cache_read_agg", "%x: key: %X ReadMain complete: %d", 
                   this, first_key.word(1), (int)vio.ndone);
             doc_len = vio.ndone;
-            MUTEX_RELEASE(lock);
-            calluser(VC_EVENT_EOS);
-            return EVENT_DONE;
+            goto Leos;
           }
         }
         Debug("cache_read_agg", "%x: key: %X ReadMain writer aborted: %d", 
@@ -700,10 +697,9 @@ Lread: {
         goto Lerror;
       }
       Debug("cache_read_agg", "%x: key: %X ReadMain retrying: %d", this, first_key.word(1), (int)vio.ndone);
-      SET_HANDLER(&CacheVC::openReadReadDone);
+      SET_HANDLER(&CacheVC::openReadMain);
       VC_SCHED_WRITER_RETRY();
     }
-    Debug("cache_evac", "truncation %X", key.word(0));
     if (is_action_tag_set("cache"))
       ink_release_assert(false);
     Warning("Document for %X truncated", earliest_key.word(0));
@@ -713,11 +709,18 @@ Lread: {
 Lerror:
   calluser(VC_EVENT_ERROR);
   return EVENT_DONE;
+Leos:
+  calluser(VC_EVENT_EOS);
+  return EVENT_DONE;
 Lcallreturn:
   handleEvent(AIO_EVENT_DONE, 0);
   return EVENT_CONT;
 }
 
+/*
+  This code follows CacheVC::openReadStartHead closely,
+  if you change this you might have to change that.
+*/
 int
 CacheVC::openReadStartEarliest(int event, Event * e)
 {
@@ -730,65 +733,61 @@ CacheVC::openReadStartEarliest(int event, Event * e)
   set_io_not_in_progress();
   if (_action.cancelled)
     return free_CacheVC(this);
-  if (!buf)
-    goto Lcollision;
-  if (!io.ok())
-    goto Ldone;
-  // an object needs to be outside the aggregation window in order to be
-  // be evacuated as it is read
-  if (!dir_agg_valid(part, &dir)) {
-    // a directory entry which is nolonger valid may have been overwritten
-    if (!dir_valid(part, &dir))
-      last_collision = NULL;
-    goto Lcollision;
-  }
-  doc = (Doc *) buf->data();
-  if (doc->magic != DOC_MAGIC) {
-    char tmpstring[100];
-    //action_tag_assert("cache", false);
-    if (is_action_tag_set("cache")) {
-      ink_release_assert(false);
-    }
-    if (doc->magic == DOC_CORRUPT)
-      Warning("Earliest: Doc checksum does not match for %s", key.string(tmpstring));
-    else
-      Warning("Earliest : Doc magic does not match for %s", key.string(tmpstring));
-    // remove the dir entry
-    dir_delete(&key, part, &dir);
-    // try going through the directory entries again
-    // in case the dir entry we deleted doesnt correspond
-    // to the key we are looking for. This is possible 
-    // because of directory collisions
-    last_collision = NULL;
-    goto Lcollision;
-  }
-  if (!(doc->key == key))
-    goto Lcollision;
-  if (part->begin_read_lock(this) < 0)
-    VC_SCHED_LOCK_RETRY();
-  // success
-  earliest_key = key;
-  docpos = doc->prefix_len();
-  next_CacheKey(&key, &doc->key);
-#ifdef HIT_EVACUATE
-  if (part->within_hit_evacuate_window(&earliest_dir) &&
-      (!cache_config_hit_evacuate_size_limit || doc_len <= cache_config_hit_evacuate_size_limit)) {
-    Debug("cache_hit_evac", "dir: %d, write: %d, phase: %d",
-          dir_offset(&earliest_dir), offset_to_part_offset(part, part->header->write_pos), part->header->phase);
-    f.hit_evacuate = 1;
-  }
-#endif
-  if (write_vc)
-    CACHE_INCREMENT_DYN_STAT(cache_read_busy_success_stat);
-  SET_HANDLER(&CacheVC::openReadMain);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
-  return EVENT_DONE;
-
-Lcollision: {
+  {
     CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
     if (!lock)
       VC_SCHED_LOCK_RETRY();
-    if (dir_probe(&key, part, &earliest_dir, &last_collision) || dir_lookaside_probe(&key, part, &earliest_dir, NULL)) {
+    if (!buf)
+      goto Lread;
+    if (!io.ok())
+      goto Ldone;
+    // an object needs to be outside the aggregation window in order to be
+    // be evacuated as it is read
+    if (!dir_agg_valid(part, &dir)) {
+      // a directory entry which is nolonger valid may have been overwritten
+      if (!dir_valid(part, &dir))
+        last_collision = NULL;
+      goto Lread;
+    }
+    doc = (Doc *) buf->data();
+    if (doc->magic != DOC_MAGIC) {
+      char tmpstring[100];
+      if (is_action_tag_set("cache")) {
+        ink_release_assert(false);
+      }
+      if (doc->magic == DOC_CORRUPT)
+        Warning("Earliest: Doc checksum does not match for %s", key.string(tmpstring));
+      else
+        Warning("Earliest : Doc magic does not match for %s", key.string(tmpstring));
+      // remove the dir entry
+      dir_delete(&key, part, &dir);
+      // try going through the directory entries again
+      // in case the dir entry we deleted doesnt correspond
+      // to the key we are looking for. This is possible 
+      // because of directory collisions
+      last_collision = NULL;
+      goto Lread;
+    }
+    if (!(doc->key == key)) // collisiion
+      goto Lread;
+    // success
+    earliest_key = key;
+    doc_pos = doc->prefix_len();
+    next_CacheKey(&key, &doc->key);
+    part->begin_read(this);
+#ifdef HIT_EVACUATE
+    if (part->within_hit_evacuate_window(&earliest_dir) &&
+        (!cache_config_hit_evacuate_size_limit || doc_len <= cache_config_hit_evacuate_size_limit)) {
+      Debug("cache_hit_evac", "dir: %d, write: %d, phase: %d",
+            dir_offset(&earliest_dir), offset_to_part_offset(part, part->header->write_pos), part->header->phase);
+      f.hit_evacuate = 1;
+    }
+#endif
+    goto Lsuccess;
+Lread: 
+    if (dir_probe(&key, part, &earliest_dir, &last_collision) ||
+        dir_lookaside_probe(&key, part, &earliest_dir, NULL)) 
+    {
       dir = earliest_dir;
       if ((ret = do_read_call(&key)) == EVENT_RETURN)
         goto Lcallreturn;
@@ -849,15 +848,21 @@ Lcollision: {
     }
 #endif
     // open write failure - another writer, so don't modify the vector
+  Ldone:
+    if (od)
+      part->close_write(this);
   }
-Ldone:
-  if (od)
-    part->close_write_lock(this);
   CACHE_INCREMENT_DYN_STAT(cache_read_failure_stat);
   _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ_FAILED, (void *) -ECACHE_NO_DOC);
   return free_CacheVC(this);
 Lcallreturn:
   return handleEvent(AIO_EVENT_DONE, 0); // hopefully a tail call
+Lsuccess:
+  if (write_vc)
+    CACHE_INCREMENT_DYN_STAT(cache_read_busy_success_stat);
+  SET_HANDLER(&CacheVC::openReadMain);
+  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
+  return EVENT_DONE;
 }
 
 // create the directory entry after the vector has been evacuated
@@ -918,6 +923,10 @@ Lrestart:
 }
 #endif
 
+/*
+  This code follows CacheVC::openReadStartEarliest closely,
+  if you change this you might have to change that.
+*/
 int
 CacheVC::openReadStartHead(int event, Event * e)
 {
@@ -930,138 +939,127 @@ CacheVC::openReadStartHead(int event, Event * e)
   set_io_not_in_progress();
   if (_action.cancelled)
     return free_CacheVC(this);
-  if (!buf)
-    goto Lcollision;
-  if (!io.ok())
-    goto Ldone;
-  // an object needs to be outside the aggregation window in order to be
-  // be evacuated as it is read
-  if (!dir_agg_valid(part, &dir)) {
-    // a directory entry which is nolonger valid may have been overwritten
-    if (!dir_valid(part, &dir))
-      last_collision = NULL;
-    goto Lcollision;
-  }
-  doc = (Doc *) buf->data();
-  if (doc->magic != DOC_MAGIC) {
-    char tmpstring[100];
-    //action_tag_assert("cache", false);
-    if (is_action_tag_set("cache")) {
-      ink_release_assert(false);
-    }
-    if (doc->magic == DOC_CORRUPT)
-      Warning("Head: Doc checksum does not match for %s", key.string(tmpstring));
-    else
-      Warning("Head : Doc magic does not match for %s", key.string(tmpstring));
-    // remove the dir entry
-    dir_delete(&key, part, &dir);
-    // try going through the directory entries again
-    // in case the dir entry we deleted doesnt correspond
-    // to the key we are looking for. This is possible 
-    // because of directory collisions
-    last_collision = NULL;
-    goto Lcollision;
-  }
-  if (!(doc->first_key == key))
-    goto Lcollision;
-  if (f.lookup) {
-    CACHE_INCREMENT_DYN_STAT(cache_lookup_success_stat);
-    _action.continuation->handleEvent(CACHE_EVENT_LOOKUP, 0);
-    return free_CacheVC(this);
-  }
-  earliest_dir = dir;
-#ifdef HTTP_CACHE
-  CacheHTTPInfo *alternate_tmp;
-  if (frag_type == CACHE_FRAG_TYPE_HTTP) {
-    ink_assert(doc->hlen);
-    if (!doc->hlen)
-      goto Ldone;
-    if (vector.get_handles(doc->hdr(), doc->hlen) != doc->hlen) {
-      if (buf) {
-        Note("OpenReadHead failed for cachekey %X : vector inconsistency with %d", key.word(0), doc->hlen);
-        dir_delete(&key, part, &dir);
-      }
-      err = ECACHE_BAD_META_DATA;
-      goto Ldone;
-    }
-    if (cache_config_select_alternate) {
-#ifdef FIXME_NONMODULAR
-      alternate_index = HttpTransactCache::SelectFromAlternates(&vector, &request, params);
-#else
-      alternate_index = 0;
-#endif
-      if (alternate_index < 0) {
-        err = ECACHE_ALT_MISS;
-        goto Ldone;
-      }
-    } else
-      alternate_index = 0;
-    alternate_tmp = vector.get(alternate_index);
-    if (!alternate_tmp->valid()) {
-      if (buf) {
-        Note("OpenReadHead failed for cachekey %X : alternate inconsistency", key.word(0));
-        dir_delete(&key, part, &dir);
-      }
-      goto Ldone;
-    }
-
-    alternate.copy_shallow(alternate_tmp);
-    alternate.object_key_get(&key);
-    doc_len = alternate.object_size_get();
-    if (key == doc->key) {      // is this my data?
-      f.single_fragment = doc->single_fragment();
-      ink_assert(f.single_fragment);     // otherwise need to read earliest
-      ink_assert(doc->hlen);
-      docpos = doc->prefix_len();
-      next_CacheKey(&key, &doc->key);
-    } else {
-      f.single_fragment = false;
-    }
-  } else
-#endif
   {
-    // non-http docs have the total len set in the first fragment
-    if (doc->hlen) {
-      ink_debug_assert(!"Cache::openReadStartHead non-http request" " for http doc");
-      err = -ECACHE_BAD_READ_REQUEST;
-      goto Ldone;
-    }
-    next_CacheKey(&key, &doc->key);
-    f.single_fragment = doc->single_fragment();
-    docpos = doc->prefix_len();
-    doc_len = doc->total_len;
-  }
-  // the first fragment might have been gc'ed. Make sure the first
-  // fragment is there before returning CACHE_EVENT_OPEN_READ
-  if (!f.single_fragment) {
-    first_buf = buf;
-    buf = NULL;
-    earliest_key = key;
-    last_collision = NULL;
-    SET_HANDLER(&CacheVC::openReadStartEarliest);
-    return openReadStartEarliest(event, e);
-  }
-#ifdef HIT_EVACUATE
-  if (part->within_hit_evacuate_window(&dir) &&
-      (!cache_config_hit_evacuate_size_limit || doc_len <= cache_config_hit_evacuate_size_limit)) {
-    Debug("cache_hit_evac", "dir: %d, write: %d, phase: %d",
-          dir_offset(&dir), offset_to_part_offset(part, part->header->write_pos), part->header->phase);
-    f.hit_evacuate = 1;
-  }
-#endif
-
-  first_buf = buf;
-  if (part->begin_read_lock(this) < 0)
-    VC_SCHED_LOCK_RETRY();
-
-  SET_HANDLER(&CacheVC::openReadMain);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
-  return EVENT_DONE;
-
-Lcollision:{
     CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
     if (!lock)
       VC_SCHED_LOCK_RETRY();
+    if (!buf)
+      goto Lread;
+    if (!io.ok())
+      goto Ldone;
+    // an object needs to be outside the aggregation window in order to be
+    // be evacuated as it is read
+    if (!dir_agg_valid(part, &dir)) {
+      // a directory entry which is nolonger valid may have been overwritten
+      if (!dir_valid(part, &dir))
+        last_collision = NULL;
+      goto Lread;
+    }
+    doc = (Doc *) buf->data();
+    if (doc->magic != DOC_MAGIC) {
+      char tmpstring[100];
+      if (is_action_tag_set("cache")) {
+        ink_release_assert(false);
+      }
+      if (doc->magic == DOC_CORRUPT)
+        Warning("Head: Doc checksum does not match for %s", key.string(tmpstring));
+      else
+        Warning("Head : Doc magic does not match for %s", key.string(tmpstring));
+      // remove the dir entry
+      dir_delete(&key, part, &dir);
+      // try going through the directory entries again
+      // in case the dir entry we deleted doesnt correspond
+      // to the key we are looking for. This is possible 
+      // because of directory collisions
+      last_collision = NULL;
+      goto Lread;
+    }
+    if (!(doc->first_key == key))
+      goto Lread;
+    if (f.lookup)
+      goto Lookup;
+    earliest_dir = dir;
+#ifdef HTTP_CACHE
+    CacheHTTPInfo *alternate_tmp;
+    if (frag_type == CACHE_FRAG_TYPE_HTTP) {
+      ink_assert(doc->hlen);
+      if (!doc->hlen)
+        goto Ldone;
+      if (vector.get_handles(doc->hdr(), doc->hlen) != doc->hlen) {
+        if (buf) {
+          Note("OpenReadHead failed for cachekey %X : vector inconsistency with %d", key.word(0), doc->hlen);
+          dir_delete(&key, part, &dir);
+        }
+        err = ECACHE_BAD_META_DATA;
+        goto Ldone;
+      }
+      if (cache_config_select_alternate) {
+#ifdef FIXME_NONMODULAR
+        alternate_index = HttpTransactCache::SelectFromAlternates(&vector, &request, params);
+#else
+        alternate_index = 0;
+#endif
+        if (alternate_index < 0) {
+          err = ECACHE_ALT_MISS;
+          goto Ldone;
+        }
+      } else
+        alternate_index = 0;
+      alternate_tmp = vector.get(alternate_index);
+      if (!alternate_tmp->valid()) {
+        if (buf) {
+          Note("OpenReadHead failed for cachekey %X : alternate inconsistency", key.word(0));
+          dir_delete(&key, part, &dir);
+        }
+        goto Ldone;
+      }
+
+      alternate.copy_shallow(alternate_tmp);
+      alternate.object_key_get(&key);
+      doc_len = alternate.object_size_get();
+      if (key == doc->key) {      // is this my data?
+        f.single_fragment = doc->single_fragment();
+        ink_assert(f.single_fragment);     // otherwise need to read earliest
+        ink_assert(doc->hlen);
+        doc_pos = doc->prefix_len();
+        next_CacheKey(&key, &doc->key);
+      } else {
+        f.single_fragment = false;
+      }
+    } else
+#endif
+    {
+      // non-http docs have the total len set in the first fragment
+      if (doc->hlen) {
+        ink_debug_assert(!"Cache::openReadStartHead non-http request" " for http doc");
+        err = -ECACHE_BAD_READ_REQUEST;
+        goto Ldone;
+      }
+      next_CacheKey(&key, &doc->key);
+      f.single_fragment = doc->single_fragment();
+      doc_pos = doc->prefix_len();
+      doc_len = doc->total_len;
+    }
+    // the first fragment might have been gc'ed. Make sure the first
+    // fragment is there before returning CACHE_EVENT_OPEN_READ
+    if (!f.single_fragment)
+      goto Learliest;
+
+#ifdef HIT_EVACUATE
+    if (part->within_hit_evacuate_window(&dir) &&
+        (!cache_config_hit_evacuate_size_limit || doc_len <= cache_config_hit_evacuate_size_limit)) {
+      Debug("cache_hit_evac", "dir: %d, write: %d, phase: %d",
+            dir_offset(&dir), offset_to_part_offset(part, part->header->write_pos), part->header->phase);
+      f.hit_evacuate = 1;
+    }
+#endif
+
+    first_buf = buf;
+    part->begin_read(this);
+
+    goto Lsuccess;
+
+  Lread:
     // check for collision
     // INKqa07684 - Cache::lookup returns CACHE_EVENT_OPEN_READ_FAILED.
     // don't want to go through this BS of reading from a writer if
@@ -1097,4 +1095,19 @@ Ldone:
   return free_CacheVC(this);
 Lcallreturn:
   return handleEvent(AIO_EVENT_DONE, 0); // hopefully a tail call
+Lsuccess:
+  SET_HANDLER(&CacheVC::openReadMain);
+  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
+  return EVENT_DONE;
+Lookup:
+  CACHE_INCREMENT_DYN_STAT(cache_lookup_success_stat);
+  _action.continuation->handleEvent(CACHE_EVENT_LOOKUP, 0);
+  return free_CacheVC(this);
+Learliest:
+  first_buf = buf;
+  buf = NULL;
+  earliest_key = key;
+  last_collision = NULL;
+  SET_HANDLER(&CacheVC::openReadStartEarliest);
+  return openReadStartEarliest(event, e);
 }

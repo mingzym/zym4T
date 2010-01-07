@@ -238,13 +238,13 @@ HttpClientSession::new_connection(NetVConnection * new_vc, bool backdoor)
 }
 
 VIO *
-HttpClientSession::do_io_read(Continuation * c, int nbytes, MIOBuffer * buf)
+HttpClientSession::do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf)
 {
   return client_vc->do_io_read(c, nbytes, buf);
 }
 
 VIO *
-HttpClientSession::do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner)
+HttpClientSession::do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner)
 {
   return client_vc->do_io_write(c, nbytes, buf, owner);
 }
