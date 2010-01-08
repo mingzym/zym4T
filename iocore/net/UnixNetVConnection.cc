@@ -101,7 +101,7 @@ close_UnixNetVConnection(UnixNetVConnection * vc, EThread * t)
   if (vc->loggingEnabled()) {
     vc->addLogMessage("close_UnixNetVConnection");
     // display the slow log for the http client session
-    if (vc->getLogsTotalTime() / 1000000 > 30000)
+    if (vc->getLogsTotalTime() / HRTIME_MSECOND > 100)
       vc->printLogs();
     vc->clearLogs();
   }
@@ -305,13 +305,6 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
       }
 
       if (!r || r == -ECONNRESET) {
-        // display the slow log for the http client session
-        if (vc->loggingEnabled()) {
-          if (vc->getLogsTotalTime() / 1000000 > 30000)
-            vc->printLogs();
-          vc->clearLogs();
-        }
-        // connection is closed
         vc->read.triggered = 0;
         nh->read_ready_list.remove(vc);
         read_signal_done(VC_EVENT_EOS, nh, vc);
@@ -582,14 +575,10 @@ UnixNetVConnection::do_io_write(Continuation * acont, ink64 anbytes, IOBufferRea
 void
 UnixNetVConnection::do_io_close(int alerrno /* = -1 */ )
 {
-  if (loggingEnabled()) {
-    addLogMessage("UnixNetVConnection::do_io_close");
-    // display the slow log for the http client session
-    if (getLogsTotalTime() / 1000000 > 30000) {
-      printLogs();
-    }
-    clearLogs();
-  }
+  addLogMessage("UnixNetVConnection::do_io_close");
+
+  EThread *t = read.vio.mutex ? read.vio.mutex->thread_holding : write.vio.mutex->thread_holding;
+  ink_debug_assert(t);
 
   disable_read(this);
   disable_write(this);
@@ -607,6 +596,9 @@ UnixNetVConnection::do_io_close(int alerrno /* = -1 */ )
     closed = 1;
   else
     closed = -1;
+
+  if (!recursion && nh->mutex->thread_holding == t)
+    close_UnixNetVConnection(this, t);
 }
 
 void

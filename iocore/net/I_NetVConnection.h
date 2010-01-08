@@ -32,9 +32,9 @@
 #include "I_IOBuffer.h"
 #include "I_Socks.h"
 
-// #define WITH_DETTAILED_VCONNECTION_LOGGING 1
+// #define WITH_DETAILED_VCONNECTION_LOGGING 1
 
-#if WITH_DETTAILED_VCONNECTION_LOGGING
+#if WITH_DETAILED_VCONNECTION_LOGGING
 #include "DetailedLog.h"
 #endif
 
@@ -417,7 +417,7 @@ public:
   /** Set remote sock addr struct. */
   virtual void set_remote_addr() = 0;
 
-#if WITH_DETTAILED_VCONNECTION_LOGGING
+#if WITH_DETAILED_VCONNECTION_LOGGING
   void loggingInit()
   {
     if (logging == NULL) {
@@ -457,8 +457,10 @@ public:
   {
     return (logging != NULL);
   }
+  DetailedLog *logging;
 #else
   void addLogMessage(const char *message) {}
+  void loggingInit() {}
   bool loggingEnabled() const { return false; }
   ink_hrtime getLogsTotalTime() const { return 0; }
   void printLogs() const {}
@@ -466,12 +468,8 @@ public:
 #endif
 
 private:
-    NetVConnection(const NetVConnection &);
+  NetVConnection(const NetVConnection &);
   NetVConnection & operator =(const NetVConnection &);
-#if WITH_DETTAILED_VCONNECTION_LOGGING
-  /** Used to queue up messages for the connection. */
-  DetailedLog *logging;
-#endif
 
 protected:
   struct sockaddr_in local_addr;
@@ -486,7 +484,7 @@ NetVConnection::NetVConnection():
 VConnection(NULL),
 attributes(0),
 thread(NULL),
-#if WITH_DETTAILED_VCONNECTION_LOGGING
+#if WITH_DETAILED_VCONNECTION_LOGGING
 logging(NULL),
 #endif
 got_local_addr(0),

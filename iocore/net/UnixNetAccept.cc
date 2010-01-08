@@ -406,7 +406,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
     socklen_t sz = sizeof(vc->con.sa);
     int fd = socketManager.accept(server.fd, (struct sockaddr *) &vc->con.sa, &sz);
 
-    // vc->loggingInit(); // TODO add a configuration option for this
+    vc->loggingInit(); // TODO add a configuration option for this
 
     if (likely(fd >= 0)) {
       vc->addLogMessage("accepting the connection");
