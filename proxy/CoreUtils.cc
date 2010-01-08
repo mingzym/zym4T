@@ -130,7 +130,7 @@ int framepointer = 0;
 int program_counter = 0;
 #endif  // linux check
 
-#if (HOST_OS == darwin)
+#if (HOST_OS == darwin) || (HOST_OS == freebsd)
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -1141,7 +1141,11 @@ CoreUtils::process_EThread(EThread * eth_test)
 
     // This is not 64-bit correct. /leif
     printf("----------- EThread @ 0x%p ----------\n", eth_test);
-    printf("   thread_id: %d\n", (int) loaded_eth->tid);
+#if (HOST_OS == freebsd) 
+    printf("   thread_id: %p\n", loaded_eth->tid);
+#else
+    printf("   thread_id: %i\n", (int) loaded_eth->tid);
+#endif
     //    printf("   NetHandler: 0x%x\n\n", (int) loaded_eth->netHandler);
   }
 

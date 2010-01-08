@@ -5149,7 +5149,7 @@ setnameserver(char *nameserver)
     char domain[256];
     char resolventry[256];
 
-#if (HOST_OS == linux) || (HOST_OS == darwin)
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
     if (getdomainname(domain, 256) == -1)
       return CLI_ERROR;
     snprintf((char *) &resolventry, sizeof(resolventry), "domain %s\nnameserver %s\n", domain, nameserver);
@@ -5181,7 +5181,7 @@ int
 getrouter(char *router, int len)
 {
   FILE *fstr;
-#if (HOST_OS == linux) || (HOST_OS == darwin)
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
   char buff[256];
   char *p;
 
@@ -5230,11 +5230,13 @@ getnetparms(char *ipnum, char *mask)
 #define interface_name "eth0"
 #elif (HOST_OS == darwin)
 #define interface_name "en0"
+#elif (HOST_OS == freebsd)
+#define interface_name "eth0"
 #endif
 
   FILE *ifconfig_data;
   char buff[BUFFLEN];
-  char *p;
+  char *p = NULL;
 
   ifconfig_data = popen("/sbin/ifconfig -a" interface_name, "r");
   if (ifconfig_data == NULL)
@@ -5258,7 +5260,7 @@ getnetparms(char *ipnum, char *mask)
     fprintf(stderr, "me lines over %d characters long.\n", BUFFLEN);
     goto err;
   }
-#if (HOST_OS == linux) || (HOST_OS == darwin)
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
   p = pos_after_string(buff, "inet addr:");
 #endif
 
@@ -6325,7 +6327,7 @@ find_value(char *pathname, char *key, char *value, int value_len, char *delim, i
   int find = 0;
   int counter = 0;
 
-#if (HOST_OS == linux) || (HOST_OS == darwin)
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
   ink_strncpy(value, "", value_len);
   // coverity[fs_check_call]
   if (access(pathname, R_OK)) {

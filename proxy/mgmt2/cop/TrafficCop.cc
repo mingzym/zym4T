@@ -2357,7 +2357,11 @@ main(int argc, char *argv[])
   signal(SIGTTIN, SIG_IGN);
 
   setsid();                     // Important, thanks Vlad. :)
+#if (HOST_OS == freebsd)
+  setpgrp(0,0);
+#else
   setpgrp();
+#endif
 
   close(STDIN_FILENO);
   close(STDOUT_FILENO);

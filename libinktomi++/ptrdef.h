@@ -43,7 +43,11 @@ typedef unsigned long int_pointer;
 #error "Invalid __WORDSIZE!"
 #endif  /* #if (__WORDSIZE == 64) || (__WORDSIZE == 32) */
 #else   /*  */
+#ifdef _LP64
+ typedef long long int_pointer;
+#else
 #error "__WORDSIZE not defined!"
+#endif
 #endif  /* #ifdef __WORDSIZE  */
   
 #endif  /* #ifndef H_PTRDEF_H */

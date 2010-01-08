@@ -56,6 +56,9 @@
 #elif (HOST_OS == darwin)
 #define DEFAULTROUTER_PATH "/tmp/tsrouterpath-fixme" // FIXME:
 #define GATEWAY_MARKER "GATEWAY=" // FIXME:
+#elif (HOST_OS == freebsd)
+#define DEFAULTROUTER_PATH "/tmp/tsrouterpath-fixme" // FIXME:
+#define GATEWAY_MARKER "GATEWAY=" // FIXME:
 #endif
 
 #define NAMESERVER_PATH "/etc/resolv.conf"
@@ -109,6 +112,8 @@
 #elif (HOST_OS == linux)
 #define TIMEZONE_FILE "/etc/sysconfig/clock"
 #elif (HOST_OS == darwin)
+#define TIMEZONE_FILE "/tmp/tstzonefile-fixme" // FIXME:
+#elif (HOST_OS == freebsd)
 #define TIMEZONE_FILE "/tmp/tstzonefile-fixme" // FIXME:
 #else
 #error No file set for this OS.

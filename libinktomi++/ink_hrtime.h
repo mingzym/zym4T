@@ -48,11 +48,6 @@ typedef ink64 ink_hrtime;
 typedef hrtime_t ink_hrtime;
 #endif
 
-#if (HOST_OS == freebsd)
-#define NEED_HRTIME_BASIS
-#define USE_TIME_STAMP_COUNTER_HRTIME
-#endif
-
 
 //////////////////////////////////////////////////////////////////////////////
 //

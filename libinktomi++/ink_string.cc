@@ -424,10 +424,15 @@ ink_utf8_to_latin1(const char *in, int inlen, char *out, int *outlen)
 
   inbytesleft = inlen;
   outbytesleft = *outlen;
-  if (iconv(ic, (char **) &in, &inbytesleft, &out, &outbytesleft) == (size_t) - 1) {
-    iconv_close(ic);
-    goto strip;
-  }
+#if (HOST_OS == freebsd)
+  if (iconv(ic, &in, &inbytesleft, &out, &outbytesleft) == (size_t) - 1) 
+#else
+  if (iconv(ic, (char **) &in, &inbytesleft, &out, &outbytesleft) == (size_t) - 1) 
+#endif
+    {
+      iconv_close(ic);
+      goto strip;
+    }
 
   *outlen -= outbytesleft;
   iconv_close(ic);

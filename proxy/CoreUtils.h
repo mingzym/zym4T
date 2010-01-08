@@ -82,7 +82,7 @@ struct core_stack_state
 };
 #endif  // linux check
 
-#if (HOST_OS == darwin)
+#if (HOST_OS == darwin) || (HOST_OS == freebsd)
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>

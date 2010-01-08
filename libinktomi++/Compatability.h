@@ -245,6 +245,12 @@ write_to_middle_of_file(int fildes, void *buf, size_t nbytes, off_t offset)
 #define ink_mmap       mmap
 #define ink_sleep      sleep
 
+#if (HOST_OS == darwin)
+#define ink_offsetof(TYPE, MEMBER) (__builtin_offsetof (TYPE, MEMBER))
+#else
+#define ink_offsetof offsetof
+#endif
+
 #include "Resource.h"
 
 #endif

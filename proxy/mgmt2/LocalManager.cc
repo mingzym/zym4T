@@ -1136,8 +1136,11 @@ LocalManager::convert_filters()
           Debug("lm-filter", "[LocalManager::startProxy] " "%s execution completed\n", absolute_convert_binary);
         }
       } else {                  // invoke the converter script - no args
-        int res = execl(absolute_convert_binary,
-                        convert_bin, NULL, NULL);
+#if (HOST_OS == freebsd)
+        int res = execl(absolute_convert_binary, convert_bin, NULL, (char *)0);
+#else
+        int res = execl(absolute_convert_binary, convert_bin, NULL, NULL);
+#endif
         if (res < 0) {
           mgmt_elog(stderr, "[LocalManager::startProxy] "
                     "%s failed to execute successfully.", absolute_convert_binary);
@@ -1202,7 +1205,11 @@ LocalManager::startProxy()
       char env_prep_bin[1024];
 
       snprintf(env_prep_bin, sizeof(env_prep_bin), "%s/%s", bin_path, env_prep);
+#if (HOST_OS == freebsd)
+      res = execl(env_prep_bin, env_prep, (char *)0);
+#else
       res = execl(env_prep_bin, env_prep, NULL);
+#endif
       _exit(res);
     }
   }

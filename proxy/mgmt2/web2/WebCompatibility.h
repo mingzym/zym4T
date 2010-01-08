@@ -57,9 +57,8 @@ typedef int WebHandle;
 //-------------------------------------------------------------------------
 
 #if (HOST_OS == freebsd)
-extern "C"
-  struct hostent *gethostbyaddr_r(const char *addr, int length, int type,
-                                  struct hostent *result, char *buffer, int buflen, int *h_errnop);
+//extern "C" struct hostent *gethostbyaddr_r(const char *addr, int length, int type,
+//                                  struct hostent *result, char *buffer, int buflen, int *h_errnop);
 #endif
 
 #if (HOST_OS == sunos)

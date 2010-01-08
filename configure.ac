@@ -432,7 +432,15 @@ case $host_os in
    ;;
 esac
 AC_SUBST([LIBTCL],[$TCL_LIB_FLAG])
-CPPFLAGS="$CPPFLAGS $TCL_INCLUDE_SPEC"
+
+case $host_os in
+  freebsd*)
+    CPPFLAGS="$CPPFLAGS -I/usr/local/include $TCL_INCLUDE_SPEC"
+    ;;
+  *)         
+   CPPFLAGS="$CPPFLAGS $TCL_INCLUDE_SPEC"
+   ;;
+esac
 
 AC_CHECK_LIB([expat],[XML_SetUserData],
   [AC_SUBST([LIBEXPAT],["-lexpat"])],

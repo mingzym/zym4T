@@ -1091,8 +1091,10 @@ VMap::upAddr(char *virt_ip)
     interface = ((VIPInfo *) hash_value)->interface;
     sub_id = ((VIPInfo *) hash_value)->sub_interface_id;
 
-#if (HOST_OS == linux) || (HOST_OS == freebsd)
+#if (HOST_OS == linux)
     res = execl(absolute_vipconf_binary, vip_conf, "up", virt_ip, "/sbin/ifconfig", interface, sub_id, NULL);
+#elif (HOST_OS == freebsd)
+    res = execl(absolute_vipconf_binary, vip_conf, "up", virt_ip, "/sbin/ifconfig", interface, sub_id, (char *)0);
 #else
     res = execl(absolute_vipconf_binary, vip_conf, "up", virt_ip, "/usr/sbin/ifconfig", interface, sub_id, NULL);
 #endif
@@ -1147,8 +1149,10 @@ VMap::downAddr(char *virt_ip)
     interface = ((VIPInfo *) hash_value)->interface;
     sub_id = ((VIPInfo *) hash_value)->sub_interface_id;
 
-#if (HOST_OS == linux) || (HOST_OS == freebsd)
+#if (HOST_OS == linux)
     res = execl(absolute_vipconf_binary, vip_conf, "down", virt_ip, "/sbin/ifconfig", interface, sub_id, NULL);
+#elif (HOST_OS == freebsd)
+    res = execl(absolute_vipconf_binary, vip_conf, "down", virt_ip, "/sbin/ifconfig", interface, sub_id, (char *)0);
 #else
     res = execl(absolute_vipconf_binary, vip_conf, "down", virt_ip, "/usr/sbin/ifconfig", interface, sub_id, NULL);
 #endif

@@ -436,7 +436,7 @@ Store::write_config_data(int fd)
 #include <sys/mount.h>
 #if (HOST_OS == freebsd)
 #include <sys/disklabel.h>
-#include <sys/diskslice.h>
+//#include <sys/diskslice.h>
 #elif (HOST_OS == darwin)
 #include <sys/disk.h>
 #include <sys/statvfs.h>

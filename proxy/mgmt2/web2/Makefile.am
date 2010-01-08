@@ -20,9 +20,8 @@ AM_CPPFLAGS = \
 MGMT_DEFS = @MGMT_DEFS@
 DEFS  += $(MGMT_DEFS)
 
-#noinst_LIBRARIES = libweb.a
-lib_LTLIBRARIES = libweb.la
-libweb_la_SOURCES = \
+noinst_LIBRARIES = libweb.a
+libweb_a_SOURCES = \
   MgmtAllow.cc \
   MgmtAllow.h \
   MgmtRaf.h \

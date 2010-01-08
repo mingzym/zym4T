@@ -21,7 +21,7 @@
   limitations under the License.
  */
 
-#if (HOST_OS == linux)
+#if (HOST_OS == linux) || (HOST_OS == freebsd) || (HOST_OS == darwin)
 
 #include "SysAPI.h"
 #include <stdio.h>
@@ -604,12 +604,12 @@ int
 Net_SetNIC_BootProtocol(char *interface, char *nic_protocol)
 {
   char nic_boot[80], nic_ip[80], nic_netmask[80], nic_gateway[80];
-
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   Net_GetNIC_Start(interface, nic_boot, sizeof(nic_boot));
   Net_GetNIC_IP(interface, nic_ip, sizeof(nic_ip));
   Net_GetNIC_Netmask(interface, nic_netmask, sizeof(nic_netmask));
   Net_GetNIC_Gateway(interface, nic_gateway, sizeof(nic_gateway));
-
+#endif
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
 }
 
@@ -617,8 +617,8 @@ int
 Net_SetNIC_IP(char *interface, char *nic_ip)
 {
   //int status;
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   char nic_boot[80], nic_protocol[80], nic_netmask[80], nic_gateway[80], old_ip[80];
-
   Net_GetNIC_IP(interface, old_ip, sizeof(old_ip));
   Net_GetNIC_Start(interface, nic_boot, sizeof(nic_boot));
   Net_GetNIC_Protocol(interface, nic_protocol, sizeof(nic_protocol));
@@ -626,26 +626,32 @@ Net_SetNIC_IP(char *interface, char *nic_ip)
   Net_GetNIC_Gateway(interface, nic_gateway, sizeof(nic_gateway));
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
 Net_SetNIC_Netmask(char *interface, char *nic_netmask)
 {
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   char nic_boot[80], nic_protocol[80], nic_ip[80], nic_gateway[80];
-
   Net_GetNIC_Start(interface, nic_boot, sizeof(nic_boot));
   Net_GetNIC_Protocol(interface, nic_protocol, sizeof(nic_protocol));
   Net_GetNIC_IP(interface, nic_ip, sizeof(nic_ip));
   Net_GetNIC_Gateway(interface, nic_gateway, sizeof(nic_gateway));
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
 Net_SetNIC_Gateway(char *interface, char *nic_gateway)
 {
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   char nic_boot[80], nic_protocol[80], nic_ip[80], nic_netmask[80];
-
   Net_GetNIC_Start(interface, nic_boot, sizeof(nic_boot));
   Net_GetNIC_Protocol(interface, nic_protocol, sizeof(nic_protocol));
   Net_GetNIC_IP(interface, nic_ip, sizeof(nic_ip));
@@ -654,6 +660,9 @@ Net_SetNIC_Gateway(char *interface, char *nic_gateway)
            nic_protocol, nic_ip, nic_netmask, nic_gateway));
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
@@ -726,7 +735,7 @@ Net_DisableInterface(char *interface)
   return status;
 }
 
-#endif
+#endif /* linux */
 
 
 int
@@ -1007,6 +1016,7 @@ NetConfig_Action(int index, ...)
 
   return 0;
 }
+
 
 bool
 recordRegexCheck(const char *pattern, const char *value)
@@ -1583,7 +1593,11 @@ setSNMP(char *sys_location, char *sys_contact, char *sys_name, char *authtrapena
     }
   } else {
     int res;
+#if (HOST_OS ==freebsd) || (HOST_OS == darwin)
+    res = execl(mv_binary, "mv", snmp_path_new, snmp_path, (char *)0);
+#else
     res = execl(mv_binary, "mv", snmp_path_new, snmp_path, NULL);
+#endif
     if (res != 0) {
       DPRINTF(("[SysAPI] mv of new snmp cfg file failed\n"));
     }
@@ -1596,7 +1610,11 @@ setSNMP(char *sys_location, char *sys_contact, char *sys_name, char *authtrapena
     wait(&status);
   } else {
     int res;
+#if (HOST_OS == freebsd) || (HOST_OS == darwin)
+    res = execl(mv_binary, "mv", ts_snmp_path_new, ts_snmp_path, (char *)0);
+#else
     res = execl(mv_binary, "mv", ts_snmp_path_new, ts_snmp_path, NULL);
+#endif
     if (res != 0) {
       DPRINTF(("[SysAPI] mv of new ts_snmp cfg file failed\n"));
     }
@@ -1651,7 +1669,11 @@ setSNMP(char *sys_location, char *sys_contact, char *sys_name, char *authtrapena
       wait(&status);
     } else {
       int res;
+#if (HOST_OS == freebsd) || (HOST_OS == darwin)
+      res = execl(mv_binary, "mv", snmp_pass_new, snmp_pass, (char *)0);
+#else
       res = execl(mv_binary, "mv", snmp_pass_new, snmp_pass, NULL);
+#endif
       if (res != 0) {
         DPRINTF(("[SysAPI] mv of new snmpass.sh file failed\n"));
       }
@@ -1821,7 +1843,7 @@ Net_SNMPGetInfo(char *sys_location, size_t sys_location_len, char *sys_contact, 
   return 0;
 }
 
-#endif
+#endif /* (HOST_OS == linux) || (HOST_OS == freebsd) || (HOST_OS == darwin) */
 
 #if (HOST_OS == sunos)
 
@@ -2577,13 +2599,16 @@ int
 Net_SetNIC_BootProtocol(char *interface, char *nic_protocol)
 {
   char nic_boot[80], nic_ip[80], nic_netmask[80], nic_gateway[80];
-
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   Net_GetNIC_Start(interface, nic_boot);
   Net_GetNIC_IP(interface, nic_ip);
   Net_GetNIC_Netmask(interface, nic_netmask);
   Net_GetNIC_Gateway(interface, nic_gateway);
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
@@ -2591,7 +2616,7 @@ Net_SetNIC_IP(char *interface, char *nic_ip)
 {
   //int status;
   char nic_boot[80], nic_protocol[80], nic_netmask[80], nic_gateway[80], old_ip[80];
-
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   Net_GetNIC_IP(interface, old_ip);
   Net_GetNIC_Start(interface, nic_boot);
   Net_GetNIC_Protocol(interface, nic_protocol);
@@ -2599,33 +2624,43 @@ Net_SetNIC_IP(char *interface, char *nic_ip)
   Net_GetNIC_Gateway(interface, nic_gateway);
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
 Net_SetNIC_Netmask(char *interface, char *nic_netmask)
 {
   char nic_boot[80], nic_protocol[80], nic_ip[80], nic_gateway[80];
-
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   Net_GetNIC_Start(interface, nic_boot);
   Net_GetNIC_Protocol(interface, nic_protocol);
   Net_GetNIC_IP(interface, nic_ip);
   Net_GetNIC_Gateway(interface, nic_gateway);
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
 Net_SetNIC_Gateway(char *interface, char *nic_gateway)
 {
   char nic_boot[80], nic_protocol[80], nic_ip[80], nic_netmask[80];
-
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
   Net_GetNIC_Start(interface, nic_boot);
   Net_GetNIC_Protocol(interface, nic_protocol);
   Net_GetNIC_IP(interface, nic_ip);
   Net_GetNIC_Netmask(interface, nic_netmask);
+
   //   DPRINTF(("Net_SetNIC_Gateway:: interface %s onboot %s protocol %s ip %s netmask %s gateway %s\n", interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
 
   return (Net_SetNIC_Up(interface, nic_boot, nic_protocol, nic_ip, nic_netmask, nic_gateway));
+#else
+  return -1;
+#endif
 }
 
 int
@@ -3303,4 +3338,4 @@ Sys_Grp_Inktomi(int egid)
   return 0;
 }
 
-#endif
+#endif /* (HOST_OS == sunos) */

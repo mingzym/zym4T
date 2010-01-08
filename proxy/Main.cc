@@ -46,7 +46,7 @@ extern "C" int plock(int);
 #include <sys/filio.h>
 #endif
 #include <syslog.h>
-#if (HOST_OS != darwin)
+#if (HOST_OS != darwin) && (HOST_OS != freebsd)
 #include <mcheck.h>
 #endif
 
@@ -1518,8 +1518,11 @@ change_uid_gid(const char *user)
 {
   struct passwd pwbuf;
   struct passwd *pwbufp = NULL;
+#if (HOST_OS == freebsd) // TODO: investigate sysconf(_SC_GETPW_R_SIZE_MAX)) failure
+  long buflen = 1024; // or 4096?
+#else
   long buflen = sysconf(_SC_GETPW_R_SIZE_MAX);
-
+#endif
   if (buflen < 0) {
     ink_fatal_die("sysconf() failed for _SC_GETPW_R_SIZE_MAX");
   }

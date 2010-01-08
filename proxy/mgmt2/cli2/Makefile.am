@@ -32,9 +32,8 @@ traffic_shell_SOURCES = \
   hashtable.h \
   ShowCmd.h
 
-#noinst_LIBRARIES = libtrafficshell.a
-lib_LTLIBRARIES = libtrafficshell.la
-libtrafficshell_la_SOURCES = \
+noinst_LIBRARIES = libtrafficshell.a
+libtrafficshell_a_SOURCES = \
   CliCreateCommands.cc \
   CliCreateCommands.h \
   CliCreateUpgradeCmd.cc \
@@ -66,19 +65,16 @@ libtrafficshell_la_SOURCES = \
 traffic_shell_LDFLAGS =	$(EXTRA_CXX_LDFLAGS)
 
 traffic_shell_LDADD = \
-  $(top_builddir)/proxy/mgmt2/api2/remote/libmgmtapiremote.la \
-  $(LIBTCL) \
-  $(top_builddir)/libinktomi++/libinktomi++.a \
-  libtrafficshell.la \
+  libtrafficshell.a \
+  $(top_builddir)/proxy/mgmt2/api2/remote/libmgmtapiremote.a \
   $(top_builddir)/proxy/mgmt2/tools/libinksysapi.a \
   $(top_builddir)/proxy/mgmt2/tools/libinkconfigapi.a \
   $(top_builddir)/proxy/mgmt2/utils/libutils_lm.a \
-  -ldl \
-  -lm \
+  $(top_builddir)/libinktomi++/libinktomi++.a \
+  $(LIBTCL) \
+  @LIBDL@ \
+  @LIBM@ \
+  @LIBICONV@ \
   @LIBEXPAT@ @LIBSSL@ \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ \
   @LIBRT@
-
-#libtrafficshell_la_LIBADD = \
-#  $(libtrafficshell_la_OBJECTS) \
-#  $(libtrafficshell_la_DEPENDENCIES)

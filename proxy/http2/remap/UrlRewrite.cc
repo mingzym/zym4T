@@ -2471,7 +2471,11 @@ UrlRewrite::load_remap_plugin(char *argv[], int argc, url_mapping * mp, char *er
     Debug("remap_plugin", "New remap plugin info created for \"%s\"", c);
 
     if ((pi->dlh = dlopen(c, RTLD_NOW)) == NULL) {
+#if (HOST_OS == freebsd)
+      err = (char *)dlerror();
+#else
       err = dlerror();
+#endif
       ink_snprintf(errbuf, errbufsize, "Can't load plugin \"%s\" - %s", c, err ? err : "Unknown dlopen() error");
       return -4;
     }

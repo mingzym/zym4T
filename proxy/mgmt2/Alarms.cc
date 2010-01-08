@@ -635,9 +635,17 @@ Alarms::execAlarmBin(const char *desc)
   } else {
     int res;
     if (alarm_email_from_name && alarm_email_from_addr && alarm_email_to_addr) {
+#if (HOST_OS == freebsd)
+      res = execl(cmd_line, alarm_bin, desc, alarm_email_from_name, alarm_email_from_addr, alarm_email_to_addr, (char *)0);
+#else
       res = execl(cmd_line, alarm_bin, desc, alarm_email_from_name, alarm_email_from_addr, alarm_email_to_addr, NULL);
+#endif
     } else {
+#if (HOST_OS == freebsd)
+      res = execl(cmd_line, alarm_bin, desc, (char *)0);
+#else
       res = execl(cmd_line, alarm_bin, desc, NULL);
+#endif
     }
     _exit(res);
   }

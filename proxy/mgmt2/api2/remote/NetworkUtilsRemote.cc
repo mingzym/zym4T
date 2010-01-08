@@ -140,7 +140,7 @@ socket_test(int fd)
  *        goes back to just sitting and listening for connection.
  ***************************************************************************/
 INKError
-connect()
+ts_connect()
 {
   struct sockaddr_un client_sock;
   struct sockaddr_un client_event_sock;
@@ -255,7 +255,7 @@ reconnect()
   // use the socket_path that was called by remote client on first init
   // use connect instead of INKInit() b/c if TM restarted, client-side tables 
   // would be recreated; just want to reconnect to same socket_path
-  err = connect();
+  err = ts_connect();
   if (err != INK_ERR_OKAY)      // problem establishing connection
     return err;
 
