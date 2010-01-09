@@ -170,6 +170,7 @@ NetHandler::process_enabled_list(NetHandler * nh, EThread * t)
 
   SList(UnixNetVConnection, read.enable_link) rq(nh->read_enable_list.popall());
   while ((vc = rq.pop())) {
+    vc->ep.modify(EVENTIO_READ);
     vc->read.in_enabled_list = 0;
     if ((vc->read.enabled && vc->read.triggered) || vc->closed)
       nh->read_ready_list.in_or_enqueue(vc);
@@ -177,6 +178,7 @@ NetHandler::process_enabled_list(NetHandler * nh, EThread * t)
 
   SList(UnixNetVConnection, write.enable_link) wq(nh->write_enable_list.popall());
   while ((vc = wq.pop())) {
+    vc->ep.modify(EVENTIO_WRITE);
     vc->write.in_enabled_list = 0;
     if ((vc->write.enabled && vc->write.triggered) || vc->closed)
       nh->write_ready_list.in_or_enqueue(vc);
@@ -236,7 +238,7 @@ NetHandler::mainNetEvent(int event, Event * e)
       if (get_ev_events(pd,x) & (EVENTIO_READ)) {
         vc->read.triggered = 1;
         vc->addLogMessage("read triggered");
-        if ((vc->read.enabled || vc->closed) && !read_ready_list.in(vc))
+        if (!read_ready_list.in(vc))
           read_ready_list.enqueue(vc);
         else if (get_ev_events(pd,x) & EVENTIO_ERROR) {
           // check for unhandled epoll events that should be handled
@@ -248,7 +250,7 @@ NetHandler::mainNetEvent(int event, Event * e)
       if (get_ev_events(pd,x) & EVENTIO_WRITE) {
         vc->write.triggered = 1;
         vc->addLogMessage("write triggered");
-        if ((vc->write.enabled || vc->closed) && !write_ready_list.in(vc))
+        if (!write_ready_list.in(vc))
           write_ready_list.enqueue(vc);
         else if (get_ev_events(pd,x) & EVENTIO_ERROR) {
           // check for unhandled epoll events that should be handled
@@ -268,27 +270,55 @@ NetHandler::mainNetEvent(int event, Event * e)
 
   pd->result = 0;
 
+#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
   UnixNetVConnection *next_vc = NULL;
   vc = read_ready_list.head;
   while (vc) {
     next_vc = vc->read.ready_link.next;
+#else
+  while ((vc = read_ready_list.dequeue())) {
+#endif
     if (vc->closed)
       close_UnixNetVConnection(vc, trigger_event->ethread);
     else if (vc->read.enabled && vc->read.triggered)
       vc->net_read_io(this, trigger_event->ethread);
+    else if (!vc->read.enabled)
+#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+      read_ready_list.remove(vc);
+#else
+      vc->ep.modify(-EVENTIO_READ);
+#endif
+#if defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
     vc = next_vc;
   }
+#else
+  }
+#endif
 
+#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
   next_vc = NULL;
   vc = write_ready_list.head;
   while (vc) {
     next_vc = vc->write.ready_link.next;
+#else
+  while ((vc = write_ready_list.dequeue())) {
+#endif
     if (vc->closed)
       close_UnixNetVConnection(vc, trigger_event->ethread);
     else if (vc->write.enabled && vc->write.triggered)
       write_to_net(this, vc, pd, trigger_event->ethread);
+    else if (!vc->write.enabled)
+#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+      write_ready_list.remove(vc);
+#else
+      vc->ep.modify(-EVENTIO_WRITE);
+#endif
+#if defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
     vc = next_vc;
   }
+#else
+  }
+#endif
 
   return EVENT_CONT;
 }

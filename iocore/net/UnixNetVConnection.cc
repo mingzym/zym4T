@@ -710,11 +710,13 @@ UnixNetVConnection::reenable(VIO * vio)
   ink_debug_assert(t == this_ethread());
   if (nh->mutex->thread_holding == t) {
     if (vio == &read.vio) {
+      ep.modify(EVENTIO_READ);
       if (read.triggered)
         nh->read_ready_list.in_or_enqueue(this);
       else
         nh->read_ready_list.remove(this);
     } else {
+      ep.modify(EVENTIO_WRITE);
       if (write.triggered)
         nh->write_ready_list.in_or_enqueue(this);
       else
@@ -736,11 +738,13 @@ UnixNetVConnection::reenable(VIO * vio)
       }
     } else {
       if (vio == &read.vio) {
+        ep.modify(EVENTIO_READ);
         if (read.triggered)
           nh->read_ready_list.in_or_enqueue(this);
         else
           nh->read_ready_list.remove(this);
       } else {
+        ep.modify(EVENTIO_WRITE);
         if (write.triggered)
           nh->write_ready_list.in_or_enqueue(this);
         else
@@ -753,24 +757,27 @@ UnixNetVConnection::reenable(VIO * vio)
 void
 UnixNetVConnection::reenable_re(VIO * vio)
 {
-  set_enabled(vio);
   if (!thread)
     return;
   EThread *t = vio->mutex->thread_holding;
   ink_debug_assert(t == this_ethread());
   if (nh->mutex->thread_holding == t) {
+    set_enabled(vio);
     if (vio == &read.vio) {
+      ep.modify(EVENTIO_READ);
       if (read.triggered)
         net_read_io(nh, t);
       else
         nh->read_ready_list.remove(this);
     } else {
+      ep.modify(EVENTIO_WRITE);
       if (write.triggered)
         write_to_net(nh, this, NULL, t);
       else
         nh->write_ready_list.remove(this);
     }
-  }
+  } else
+    reenable(vio);
 }
 
 

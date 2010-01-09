@@ -51,6 +51,7 @@ struct ev_loop
 #include "ev_vars.h"
 #undef VAR
 };
+extern "C" void fd_change(struct ev_loop *, int fd, int flags);
 #endif
 
 class PollDescriptor;
@@ -82,6 +83,11 @@ struct EventIO
   int start(EventLoop l, UnixNetVConnection *vc, int events);
   int start(EventLoop l, UnixUDPConnection *vc, int events);
   int start(EventLoop l, int fd, Continuation *c, int events);
+  /*
+    Change the existing events by adding modify(EVENTIO_READ)
+    or removing modify(-EVENTIO_READ)
+  */
+  int modify(int events);
   int stop();
   int close();
   EventIO() { 
@@ -217,6 +223,9 @@ public:
   Que(DNSConnection, link) dnsqueue;
   ASLL(UnixNetVConnection, read.enable_link) read_enable_list;
   ASLL(UnixNetVConnection, write.enable_link) write_enable_list;
+
+  time_t sec;
+  int cycles;
 
   int startNetEvent(int event, Event * data);
   int mainNetEvent(int event, Event * data);
@@ -432,6 +441,7 @@ read_disable(NetHandler * nh, UnixNetVConnection * vc)
 #endif
   vc->read.enabled = 0;
   nh->read_ready_list.remove(vc);
+  vc->ep.modify(-EVENTIO_READ);
 }
 
 static inline void
@@ -451,6 +461,7 @@ write_disable(NetHandler * nh, UnixNetVConnection * vc)
 #endif
   vc->write.enabled = 0;
   nh->write_ready_list.remove(vc);
+  vc->ep.modify(-EVENTIO_WRITE);
 }
 
 inline int EventIO::start(EventLoop l, DNSConnection *vc, int events) {
@@ -491,6 +502,20 @@ inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
   return 0;
 }
 
+inline int EventIO::modify(int e) {
+  ink_assert(event_loop);
+  int ee = eio.events;
+  if (e < 0)
+    ee &= ~(-e);
+  else
+    ee |= e;
+  if (ee != eio.events) {
+    eio.events = ee;
+    fd_change(event_loop->eio, eio.fd, 0);
+  }
+  return 0;
+}
+
 inline int EventIO::stop() {
   if (event_loop) {
     ev_io_stop(event_loop->eio, &eio);
@@ -512,12 +537,17 @@ inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
   ev.data.ptr = this;
   return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_ADD, fd, &ev);
 #elif defined(USE_KQUEUE)
-    struct kevent ev;
-    EV_SET(&ev, con[icon].fd, EVFILT_READ, EV_ADD, 0, 0, con[icon].epoll_ptr);
-    r = kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL);
+  struct kevent ev;
+  EV_SET(&ev, con[icon].fd, EVFILT_READ, EV_ADD, 0, 0, con[icon].epoll_ptr);
+  return kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL);
 #else
 #error port me
 #endif
+}
+
+inline int EventIO::modify(int e) {
+  (void)e;
+  return 0;
 }
 
 inline int EventIO::stop() {
@@ -531,7 +561,7 @@ inline int EventIO::stop() {
     struct kevent ev[2];
     EV_SET(&ev[0], con[icon].fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
     EV_SET(&ev[1], con[icon].fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-    kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
+    return kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
 #else
 #error port me
 #endif
