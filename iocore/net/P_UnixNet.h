@@ -28,6 +28,7 @@
 #include "List.h"
 
 #define USE_EDGE_TRIGGER_EPOLL  1
+#define USE_EDGE_TRIGGER_KQUEUE  1
 
 #ifdef USE_LIBEV
 #define EV_MINPRI 0
@@ -68,6 +69,9 @@ struct EventIO
 #else
   int fd;
 #endif
+#if defined(USE_KQUEUE) || (defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGERED_EPOLL))
+  int events;
+#endif
   EventLoop event_loop;
   int type;
   union
@@ -83,11 +87,11 @@ struct EventIO
   int start(EventLoop l, UnixNetVConnection *vc, int events);
   int start(EventLoop l, UnixUDPConnection *vc, int events);
   int start(EventLoop l, int fd, Continuation *c, int events);
-  /*
-    Change the existing events by adding modify(EVENTIO_READ)
-    or removing modify(-EVENTIO_READ)
-  */
+  // Change the existing events by adding modify(EVENTIO_READ)
+  // or removing modify(-EVENTIO_READ), for level triggered I/O
   int modify(int events);
+  // Refresh the existing events (i.e. KQUEUE EV_CLEAR), for edge triggered I/O
+  int refresh(int events);
   int stop();
   int close();
   EventIO() { 
@@ -126,8 +130,14 @@ struct EventIO
 #endif
 #define EVENTIO_ERROR (EPOLLERR|EPOLLPRI|EPOLLHUP)
 #elif defined(USE_KQUEUE)
-#define EVENTIO_READ EVFILT_READ
-#define EVENTIO_READ EVFILT_WRITE
+#ifdef USE_EDGE_TRIGGER_KQUEUE
+#define USE_EDGE_TRIGGER 1
+#define INK_EV_EDGE_TRIGGER EV_CLEAR
+#else
+#define INK_EV_EDGE_TRIGGER 0
+#endif
+#define EVENTIO_READ INK_EVP_IN
+#define EVENTIO_WRITE INK_EVP_OUT
 #define EVENTIO_ERROR (0x010|0x002|0x020) // ERR PRI HUP
 #else
 #error port me
@@ -516,6 +526,10 @@ inline int EventIO::modify(int e) {
   return 0;
 }
 
+inline int EventIO::refresh(int e) {
+  return 0;
+}
+
 inline int EventIO::stop() {
   if (event_loop) {
     ev_io_stop(event_loop->eio, &eio);
@@ -535,20 +549,82 @@ inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
   memset(&ev, 0, sizeof(ev));
   ev.events = e;
   ev.data.ptr = this;
+#ifndef USE_EDGE_TRIGGERED
+  events = e;
+#endif
   return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_ADD, fd, &ev);
 #elif defined(USE_KQUEUE)
-  struct kevent ev;
-  EV_SET(&ev, con[icon].fd, EVFILT_READ, EV_ADD, 0, 0, con[icon].epoll_ptr);
-  return kevent(pd->kqueue_fd, &ev, 1, NULL, 0, NULL);
+  events = e;
+  struct kevent ev[2];
+  int n = 0;
+  if (e & EVENTIO_READ)
+    EV_SET(&ev[n++], fd, EVFILT_READ, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
+  if (e & EVENTIO_WRITE)
+    EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
+  return kevent(l->kqueue_fd, &ev[0], n, NULL, 0, NULL);
 #else
 #error port me
 #endif
 }
 
 inline int EventIO::modify(int e) {
-  (void)e;
+#if defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGER)
+  struct epoll_event ev;
+  memset(&ev, 0, sizeof(ev));
+  int ee = events;
+  if (e < 0)
+    ee &= ~(-e);
+  else
+    ee |= e;
+  events = ee;
+  ev.events = ee;
+  ev.data.ptr = this;
+  return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_MOD, fd, &ev);
+#elif defined(USE_KQUEUE) && !defined(USE_EDGE_TRIGGER)
+  int n = 0;
+  struct kevent ev[2];
+  int ee = events;
+  if (e < 0) {
+    ee &= ~(-e);
+    if ((-e) & EVENTIO_READ)
+      EV_SET(&ev[n++], fd, EVFILT_READ, EV_DELETE, 0, 0, this);
+    if ((-e) & EVENTIO_WRITE)
+      EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, this);
+  } else {
+    ee |= e;
+    if (e & EVENTIO_READ)
+      EV_SET(&ev[n++], fd, EVFILT_READ, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
+    if (e & EVENTIO_WRITE)
+      EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
+  }
+  events = ee;
+  if (n)
+    return kevent(event_loop->kqueue_fd, &ev[0], n, NULL, 0, NULL);
+  else
+    return 0;
+#else
   return 0;
+#endif
 }
+
+inline int EventIO::refresh(int e) {
+#if defined(USE_KQUEUE) && defined(USE_EDGE_TRIGGER)
+  e = e & events;
+  struct kevent ev[2];
+  int n = 0;
+  if (e & EVENTIO_READ)
+    EV_SET(&ev[n++], fd, EVFILT_READ, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
+  if (e & EVENTIO_WRITE)
+    EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
+  if (n)
+    return kevent(event_loop->kqueue_fd, &ev[0], n, NULL, 0, NULL);
+  else
+    return 0;
+#else
+  return 0;
+#endif
+}
+
 
 inline int EventIO::stop() {
   if (event_loop) {
@@ -558,10 +634,17 @@ inline int EventIO::stop() {
     ev.events = EPOLLIN | EPOLLOUT | EPOLLET;
     return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_DEL, fd, &ev);
 #elif defined(USE_KQUEUE)
+#if 0
+    // this is not necessary and may result in a race if
+    // a file descriptor is reused between polls
+    int n = 0;
     struct kevent ev[2];
-    EV_SET(&ev[0], con[icon].fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-    EV_SET(&ev[1], con[icon].fd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
-    return kevent(pd->kqueue_fd, &ev[0], 2, NULL, 0, NULL);
+    if (events & EVENTIO_READ)
+      EV_SET(&ev[n++], fd, EVFILT_READ, EV_DELETE, 0, 0, this);
+    if (events & EVENTIO_WRITE)
+      EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, this);
+    return kevent(event_loop->kqueue_fd, &ev[0], n, NULL, 0, NULL);
+#endif
 #else
 #error port me
 #endif

@@ -44,15 +44,16 @@ ClassAllocator<UnixNetVConnection> netVCAllocator("netVCAllocator");
 //
 // Prototypes
 //
-void net_update_priority(NetHandler * nh, UnixNetVConnection * vc, NetState * ns, int ndone);
+void net_update_priority(NetHandler *nh, UnixNetVConnection *vc, NetState *ns, int ndone);
 
 //
-// Reschedule a UnixNetVConnection by moving VC 
+// Reschedule a UnixNetVConnection by moving it
 // onto or off of the ready_list
 //
 static inline void
-read_reschedule(NetHandler * nh, UnixNetVConnection * vc)
+read_reschedule(NetHandler *nh, UnixNetVConnection *vc)
 {
+  vc->ep.refresh(EVENTIO_READ);
   if (vc->read.triggered && vc->read.enabled) {
     nh->read_ready_list.in_or_enqueue(vc);
   } else
@@ -60,8 +61,9 @@ read_reschedule(NetHandler * nh, UnixNetVConnection * vc)
 }
 
 static inline void
-write_reschedule(NetHandler * nh, UnixNetVConnection * vc)
+write_reschedule(NetHandler *nh, UnixNetVConnection *vc)
 {
+  vc->ep.refresh(EVENTIO_WRITE);
   if (vc->write.triggered && vc->write.enabled) {
     nh->write_ready_list.in_or_enqueue(vc);
   } else
@@ -69,7 +71,7 @@ write_reschedule(NetHandler * nh, UnixNetVConnection * vc)
 }
 
 void
-net_activity(UnixNetVConnection * vc, EThread * thread)
+net_activity(UnixNetVConnection *vc, EThread *thread)
 {
   (void) thread;
 #ifdef INACTIVITY_TIMEOUT
@@ -85,9 +87,8 @@ net_activity(UnixNetVConnection * vc, EThread * thread)
   }
 #else
   vc->next_inactivity_timeout_at = 0;
-  if (vc->inactivity_timeout_in) {
+  if (vc->inactivity_timeout_in)
     vc->next_inactivity_timeout_at = ink_get_hrtime() + vc->inactivity_timeout_in;
-  }
 #endif
 
 }
@@ -96,7 +97,7 @@ net_activity(UnixNetVConnection * vc, EThread * thread)
 // Function used to close a UnixNetVConnection and free the vc
 //
 void
-close_UnixNetVConnection(UnixNetVConnection * vc, EThread * t)
+close_UnixNetVConnection(UnixNetVConnection *vc, EThread *t)
 {
   if (vc->loggingEnabled()) {
     vc->addLogMessage("close_UnixNetVConnection");
@@ -142,7 +143,7 @@ close_UnixNetVConnection(UnixNetVConnection * vc, EThread * t)
 // Signal an event
 //
 static inline int
-read_signal_and_update(int event, UnixNetVConnection * vc)
+read_signal_and_update(int event, UnixNetVConnection *vc)
 {
   vc->recursion++;
   vc->read.vio._cont->handleEvent(event, &vc->read.vio);
@@ -157,7 +158,7 @@ read_signal_and_update(int event, UnixNetVConnection * vc)
 }
 
 static inline int
-write_signal_and_update(int event, UnixNetVConnection * vc)
+write_signal_and_update(int event, UnixNetVConnection *vc)
 {
   vc->recursion++;
   vc->write.vio._cont->handleEvent(event, &vc->write.vio);
@@ -172,7 +173,7 @@ write_signal_and_update(int event, UnixNetVConnection * vc)
 }
 
 static inline int
-read_signal_done(int event, NetHandler * nh, UnixNetVConnection * vc)
+read_signal_done(int event, NetHandler *nh, UnixNetVConnection *vc)
 {
   vc->read.enabled = 0;
   if (read_signal_and_update(event, vc) == EVENT_DONE) {
@@ -184,7 +185,7 @@ read_signal_done(int event, NetHandler * nh, UnixNetVConnection * vc)
 }
 
 static inline int
-write_signal_done(int event, NetHandler * nh, UnixNetVConnection * vc)
+write_signal_done(int event, NetHandler *nh, UnixNetVConnection *vc)
 {
   vc->write.enabled = 0;
   if (write_signal_and_update(event, vc) == EVENT_DONE) {
@@ -196,14 +197,14 @@ write_signal_done(int event, NetHandler * nh, UnixNetVConnection * vc)
 }
 
 static inline int
-read_signal_error(NetHandler * nh, UnixNetVConnection * vc, int lerrno)
+read_signal_error(NetHandler *nh, UnixNetVConnection *vc, int lerrno)
 {
   vc->lerrno = lerrno;
   return read_signal_done(VC_EVENT_ERROR, nh, vc);
 }
 
 static inline int
-write_signal_error(NetHandler * nh, UnixNetVConnection * vc, int lerrno)
+write_signal_error(NetHandler *nh, UnixNetVConnection *vc, int lerrno)
 {
   vc->lerrno = lerrno;
   return write_signal_done(VC_EVENT_ERROR, nh, vc);
@@ -214,11 +215,11 @@ write_signal_error(NetHandler * nh, UnixNetVConnection * vc, int lerrno)
 // onto or off of the ready_list.
 // Had to wrap this function with net_read_io for SSL.
 static void
-read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
+read_from_net(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
 {
   vc->addLogMessage("read from net");
-  NetState * s = &vc->read;
-  ProxyMutex * mutex = thread->mutex;
+  NetState *s = &vc->read;
+  ProxyMutex *mutex = thread->mutex;
   MIOBufferAccessor & buf = s->vio.buffer;
   int r = 0;
 
@@ -252,7 +253,7 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
   int niov = 0;
   IOVec tiovec[NET_MAX_IOV];
   if (toread) {
-    IOBufferBlock * b = buf.mbuf->_writer;
+    IOBufferBlock *b = buf.mbuf->_writer;
     do {
       niov = 0;
       rattempted = 0;
@@ -295,7 +296,6 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
     // check for errors
     if (r <= 0) {
 
-      // If the socket was not ready,add into the WaitList
       if (r == -EAGAIN || r == -ENOTCONN) {
         NET_DEBUG_COUNT_DYN_STAT(net_calls_to_read_nodata_stat, 1);
         vc->addLogMessage("EAGAIN or ENOTCONN");
@@ -324,9 +324,8 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
 #endif
     s->vio.ndone += r;
     net_activity(vc, thread);
-  } else {
+  } else
     r = 0;
-  }
 
   // Signal read ready, check if user is not done
   if (r) {
@@ -337,10 +336,8 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
       Debug("ssl", "read_from_net, read finished - signal done");
       return;
     } else {
-      if (read_signal_and_update(VC_EVENT_READ_READY, vc) != EVENT_CONT) {
+      if (read_signal_and_update(VC_EVENT_READ_READY, vc) != EVENT_CONT)
         return;
-      }
-      // ink_assert(s->enabled);
       // change of lock... don't look at shared variables!
       if (lock.m.m_ptr != s->vio.mutex.m_ptr) {
         read_reschedule(nh, vc);
@@ -363,7 +360,7 @@ read_from_net(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
 // Rescheduling the UnixNetVConnection when necessary.
 //
 void
-write_to_net(NetHandler * nh, UnixNetVConnection * vc, PollDescriptor * pd, EThread * thread)
+write_to_net(NetHandler *nh, UnixNetVConnection *vc, PollDescriptor *pd, EThread *thread)
 {
   ProxyMutex *mutex = thread->mutex;
 
@@ -375,7 +372,7 @@ write_to_net(NetHandler * nh, UnixNetVConnection * vc, PollDescriptor * pd, EThr
 
 
 void
-write_to_net_io(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
+write_to_net_io(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
 {
   vc->addLogMessage("write to net io");
 
@@ -526,7 +523,7 @@ write_to_net_io(NetHandler * nh, UnixNetVConnection * vc, EThread * thread)
 
 
 VIO *
-UnixNetVConnection::do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf)
+UnixNetVConnection::do_io_read(Continuation *c, ink64 nbytes, MIOBuffer *buf)
 {
   ink_assert(!closed);
   if (buf)
@@ -548,7 +545,7 @@ UnixNetVConnection::do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf)
 }
 
 VIO *
-UnixNetVConnection::do_io_write(Continuation * acont, ink64 anbytes, IOBufferReader * abuffer, bool owner)
+UnixNetVConnection::do_io_write(Continuation *acont, ink64 anbytes, IOBufferReader *abuffer, bool owner)
 {
   addLogMessage("do_io_write");
   ink_assert(!closed);
@@ -636,7 +633,7 @@ UnixNetVConnection::do_io_shutdown(ShutdownHowTo_t howto)
 }
 
 int
-OOB_callback::retry_OOB_send(int event, Event * e)
+OOB_callback::retry_OOB_send(int event, Event *e)
 {
   (void) event;
   (void) e;
@@ -663,7 +660,7 @@ UnixNetVConnection::cancel_OOB()
 }
 
 Action *
-UnixNetVConnection::send_OOB(Continuation * cont, char *buf, int len)
+UnixNetVConnection::send_OOB(Continuation *cont, char *buf, int len)
 {
   UnixNetVConnection *u = (UnixNetVConnection *) this;
   ink_debug_assert(len > 0);
@@ -699,7 +696,7 @@ UnixNetVConnection::send_OOB(Continuation * cont, char *buf, int len)
 // writing.
 //
 void
-UnixNetVConnection::reenable(VIO * vio)
+UnixNetVConnection::reenable(VIO *vio)
 {
   if (STATE_FROM_VIO(vio)->enabled)
     return;
@@ -711,12 +708,14 @@ UnixNetVConnection::reenable(VIO * vio)
   if (nh->mutex->thread_holding == t) {
     if (vio == &read.vio) {
       ep.modify(EVENTIO_READ);
+      ep.refresh(EVENTIO_READ);
       if (read.triggered)
         nh->read_ready_list.in_or_enqueue(this);
       else
         nh->read_ready_list.remove(this);
     } else {
       ep.modify(EVENTIO_WRITE);
+      ep.refresh(EVENTIO_WRITE);
       if (write.triggered)
         nh->write_ready_list.in_or_enqueue(this);
       else
@@ -739,12 +738,14 @@ UnixNetVConnection::reenable(VIO * vio)
     } else {
       if (vio == &read.vio) {
         ep.modify(EVENTIO_READ);
+	ep.refresh(EVENTIO_READ);
         if (read.triggered)
           nh->read_ready_list.in_or_enqueue(this);
         else
           nh->read_ready_list.remove(this);
       } else {
         ep.modify(EVENTIO_WRITE);
+	ep.refresh(EVENTIO_WRITE);
         if (write.triggered)
           nh->write_ready_list.in_or_enqueue(this);
         else
@@ -755,7 +756,7 @@ UnixNetVConnection::reenable(VIO * vio)
 }
 
 void
-UnixNetVConnection::reenable_re(VIO * vio)
+UnixNetVConnection::reenable_re(VIO *vio)
 {
   if (!thread)
     return;
@@ -765,12 +766,14 @@ UnixNetVConnection::reenable_re(VIO * vio)
     set_enabled(vio);
     if (vio == &read.vio) {
       ep.modify(EVENTIO_READ);
+      ep.refresh(EVENTIO_READ);
       if (read.triggered)
         net_read_io(nh, t);
       else
         nh->read_ready_list.remove(this);
     } else {
       ep.modify(EVENTIO_WRITE);
+      ep.refresh(EVENTIO_WRITE);
       if (write.triggered)
         write_to_net(nh, this, NULL, t);
       else
@@ -799,7 +802,7 @@ closed(0), inactivity_timeout_in(0), active_timeout_in(0),
 // Private methods
 
 void
-UnixNetVConnection::set_enabled(VIO * vio)
+UnixNetVConnection::set_enabled(VIO *vio)
 {
   ink_debug_assert(vio->mutex->thread_holding == this_ethread());
   ink_assert(!closed);
@@ -814,7 +817,7 @@ UnixNetVConnection::set_enabled(VIO * vio)
 }
 
 void
-UnixNetVConnection::net_read_io(NetHandler * nh, EThread * lthread)
+UnixNetVConnection::net_read_io(NetHandler *nh, EThread *lthread)
 {
   read_from_net(nh, this, lthread);
 }
@@ -869,19 +872,19 @@ UnixNetVConnection::loadBufferAndCallWrite(int towrite, int &wattempted, int &to
 }
 
 void
-UnixNetVConnection::readDisable(NetHandler * nh)
+UnixNetVConnection::readDisable(NetHandler *nh)
 {
   read_disable(nh, this);
 }
 
 void
-UnixNetVConnection::readSignalError(NetHandler * nh, int err)
+UnixNetVConnection::readSignalError(NetHandler *nh, int err)
 {
   read_signal_error(nh, this, err);
 }
 
 int
-UnixNetVConnection::readSignalDone(int event, NetHandler * nh)
+UnixNetVConnection::readSignalDone(int event, NetHandler *nh)
 {
   return (read_signal_done(event, nh, this));
 }
@@ -897,19 +900,19 @@ UnixNetVConnection::readSignalAndUpdate(int event)
 // without affecting regular net stuff or copying a bunch of code into
 // the header files.
 void
-UnixNetVConnection::readReschedule(NetHandler * nh)
+UnixNetVConnection::readReschedule(NetHandler *nh)
 {
   read_reschedule(nh, this);
 }
 
 void
-UnixNetVConnection::netActivity(EThread * lthread)
+UnixNetVConnection::netActivity(EThread *lthread)
 {
   net_activity(this, lthread);
 }
 
 int
-UnixNetVConnection::startEvent(int event, Event * e)
+UnixNetVConnection::startEvent(int event, Event *e)
 {
   (void) event;
   MUTEX_TRY_LOCK(lock, action_.mutex, e->ethread);
@@ -927,7 +930,7 @@ UnixNetVConnection::startEvent(int event, Event * e)
 }
 
 int
-UnixNetVConnection::acceptEvent(int event, Event * e)
+UnixNetVConnection::acceptEvent(int event, Event *e)
 {
   (void) event;
   thread = e->ethread;
@@ -974,7 +977,7 @@ UnixNetVConnection::acceptEvent(int event, Event * e)
 // and for active and inactivity timeouts.
 //
 int
-UnixNetVConnection::mainEvent(int event, Event * e)
+UnixNetVConnection::mainEvent(int event, Event *e)
 {
   addLogMessage("main event");
   ink_debug_assert(event == EVENT_IMMEDIATE || event == EVENT_INTERVAL);
@@ -1051,7 +1054,7 @@ UnixNetVConnection::mainEvent(int event, Event * e)
 
 
 int
-UnixNetVConnection::connectUp(EThread * t)
+UnixNetVConnection::connectUp(EThread *t)
 {
   addLogMessage("connectUp");
 
@@ -1134,7 +1137,7 @@ UnixNetVConnection::connectUp(EThread * t)
 
 
 void
-UnixNetVConnection::free(EThread * t)
+UnixNetVConnection::free(EThread *t)
 {
   NET_DECREMENT_THREAD_DYN_STAT(net_connections_currently_open_stat, t);
   // clear variables for reuse
