@@ -104,12 +104,12 @@ poll_poll (EV_P_ ev_tstamp timeout)
       else if (errno != EINTR)
         ev_syserr ("(libev) poll");
     }
-  else
-    for (p = polls; res; ++p)
+  else {
+    int i = 0;
+    for (i = 0; i < pollcnt; i++) {
+      p = &polls[i];
       if (expect_false (p->revents)) /* this expect is debatable */
         {
-          --res;
-
           if (expect_false (p->revents & POLLNVAL))
             fd_kill (EV_A_ p->fd);
           else
@@ -120,6 +120,8 @@ poll_poll (EV_P_ ev_tstamp timeout)
               | (p->revents & (POLLIN | POLLERR | POLLHUP) ? EV_READ : 0)
             );
         }
+      }
+  }
 }
 
 int inline_size
