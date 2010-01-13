@@ -114,6 +114,7 @@ struct EventIO
 #define EVENTIO_READWRITE_VC		2
 #define EVENTIO_DNS_CONNECTION		3
 #define EVENTIO_UDP_CONNECTION		4
+#define EVENTIO_ASYNC_SIGNAL		5
 
 #if defined(USE_LIBEV)
 #define EVENTIO_READ EV_READ
@@ -192,8 +193,7 @@ extern int http_accept_port_number;
 #define MAX_NET_BUCKETS                           256
 #define MAX_EPOLL_ARRAY_SIZE                      (1024*16)
 #define MAX_EPOLL_TIMEOUT                         50    /* mseconds */
-#define DEFAULT_EPOLL_TIMEOUT                     10    /* mseconds */
-#define REAL_DEFAULT_EPOLL_TIMEOUT                3     /* the define above is old code [ebalsa] -- this directly effects latency of the connections. */
+#define DEFAULT_POLL_TIMEOUT                      10    /* mseconds */
 
 #define NET_THROTTLE_DELAY                        50    /* mseconds */
 #define INK_MIN_PRIORITY                          0
@@ -655,34 +655,4 @@ inline int EventIO::stop() {
 
 #endif
 
-
-#ifndef INACTIVITY_TIMEOUT
-// INKqa10496
-// One Inactivity cop runs on each thread once every second and
-// loops through the list of NetVCs and calls the timeouts
-struct InactivityCop:public Continuation
-{
-  InactivityCop(ProxyMutex * m):Continuation(m)
-  {
-    SET_HANDLER(&InactivityCop::check_inactivity);
-  }
-  int check_inactivity(int event, Event * e)
-  {
-    (void) event;
-    ink_hrtime now = ink_get_hrtime();
-    NetHandler *nh = get_NetHandler(this_ethread());
-    UnixNetVConnection * vc = nh->open_list.head, *vc_next = 0;
-    while (vc) {
-      vc_next = (UnixNetVConnection*)vc->link.next;
-      if (vc->inactivity_timeout_in && vc->next_inactivity_timeout_at && vc->next_inactivity_timeout_at < now)
-        vc->handleEvent(EVENT_IMMEDIATE, e);
-      else
-        if (vc->closed)
-          close_UnixNetVConnection(vc, e->ethread);
-      vc = vc_next;
-    }
-    return 0;
-  }
-};
-#endif
 #endif

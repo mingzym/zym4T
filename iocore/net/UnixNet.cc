@@ -33,15 +33,46 @@ ink_hrtime last_transient_accept_error;
 
 extern "C" void fd_reify(struct ev_loop *);
 
-PollCont::PollCont(ProxyMutex * m):Continuation(m), net_handler(NULL), poll_timeout(REAL_DEFAULT_EPOLL_TIMEOUT)
+
+#ifndef INACTIVITY_TIMEOUT
+// INKqa10496
+// One Inactivity cop runs on each thread once every second and
+// loops through the list of NetVCs and calls the timeouts
+struct InactivityCop:public Continuation
+{
+  InactivityCop(ProxyMutex *m):Continuation(m)
+  {
+    SET_HANDLER(&InactivityCop::check_inactivity);
+  }
+  int check_inactivity(int event, Event *e)
+  {
+    (void) event;
+    ink_hrtime now = ink_get_hrtime();
+    NetHandler *nh = get_NetHandler(this_ethread());
+    UnixNetVConnection *vc = nh->open_list.head, *vc_next = 0;
+    while (vc) {
+      vc_next = (UnixNetVConnection*)vc->link.next;
+      if (vc->inactivity_timeout_in && vc->next_inactivity_timeout_at && vc->next_inactivity_timeout_at < now)
+        vc->handleEvent(EVENT_IMMEDIATE, e);
+      else
+        if (vc->closed)
+          close_UnixNetVConnection(vc, e->ethread);
+      vc = vc_next;
+    }
+    return 0;
+  }
+};
+#endif
+
+PollCont::PollCont(ProxyMutex *m):Continuation(m), net_handler(NULL), poll_timeout(DEFAULT_POLL_TIMEOUT)
 {
   pollDescriptor = NEW(new PollDescriptor);
   pollDescriptor->init();
   SET_HANDLER(&PollCont::pollEvent);
 }
 
-PollCont::PollCont(ProxyMutex * m, NetHandler * nh):Continuation(m), net_handler(nh),
-poll_timeout(REAL_DEFAULT_EPOLL_TIMEOUT)
+PollCont::PollCont(ProxyMutex *m, NetHandler *nh):Continuation(m), net_handler(nh),
+poll_timeout(DEFAULT_POLL_TIMEOUT)
 {
   pollDescriptor = NEW(new PollDescriptor);
   pollDescriptor->init();
@@ -59,7 +90,7 @@ PollCont::~PollCont()
 // and stores the resultant events in ePoll_Triggered_Events
 //
 int
-PollCont::pollEvent(int event, Event * e)
+PollCont::pollEvent(int event, Event *e)
 {
   (void) event;
   (void) e;
@@ -74,7 +105,7 @@ PollCont::pollEvent(int event, Event * e)
             net_handler->write_enable_list.empty());
       poll_timeout = 0;         //poll immediately returns -- we have triggered stuff to process right now
     } else {
-      poll_timeout = REAL_DEFAULT_EPOLL_TIMEOUT;
+      poll_timeout = DEFAULT_POLL_TIMEOUT;
     }
   }
   // wait for fd's to tigger, or don't wait if timeout is 0
@@ -106,8 +137,30 @@ PollCont::pollEvent(int event, Event * e)
   return EVENT_CONT;
 }
 
+static void
+net_signal_hook_callback(EThread *thread) {
+#if HAVE_EVENTFD
+  inku64 counter;
+  read(thread->evfd, &counter, sizeof(inku64));
+#else
+  char dummy;
+  read(thread->evpipe[0], &dummy, 1);
+#endif  
+}
+
+static void
+net_signal_hook_function(EThread *thread) {
+#if HAVE_EVENTFD
+  inku64 counter = 1;
+  write(thread->evfd, &counter, sizeof(inku64));
+#else
+  char dummy;
+  write(thread->evpipe[0], &dummy, 1);
+#endif  
+}
+
 void
-initialize_thread_for_net(EThread * thread, int thread_index)
+initialize_thread_for_net(EThread *thread, int thread_index)
 {
   static bool poll_delay_read = false;
   int max_poll_delay;           // max poll delay in milliseconds
@@ -123,9 +176,9 @@ initialize_thread_for_net(EThread * thread, int thread_index)
   new((ink_dummy_for_new *) get_NetHandler(thread)) NetHandler();
   new((ink_dummy_for_new *) get_PollCont(thread)) PollCont(thread->mutex, get_NetHandler(thread));
   get_NetHandler(thread)->mutex = new_ProxyMutex();
-#if defined(USE_LIBEV)
   PollCont *pc = get_PollCont(thread);
   PollDescriptor *pd = pc->pollDescriptor;
+#if defined(USE_LIBEV)
   if (!thread_index)
     pd->eio = ev_default_loop(0);
   else
@@ -136,6 +189,15 @@ initialize_thread_for_net(EThread * thread, int thread_index)
 #ifndef INACTIVITY_TIMEOUT
   InactivityCop *inactivityCop = NEW(new InactivityCop(get_NetHandler(thread)->mutex));
   thread->schedule_every(inactivityCop, HRTIME_SECONDS(1));
+#endif
+
+  thread->signal_hook = net_signal_hook_function;
+  thread->ep = (EventIO*)malloc(sizeof(EventIO));
+  thread->ep->type = EVENTIO_ASYNC_SIGNAL;
+#if HAVE_EVENTFD
+  thread->ep->start(pd, thread->evfd, 0, EVENTIO_READ);
+#else
+  thread->ep->start(pd, thread->evpipe[0], 0, EVENTIO_READ);
 #endif
 }
 
@@ -151,7 +213,7 @@ NetHandler::NetHandler():Continuation(NULL), trigger_event(0)
 // from now on.
 //
 int
-NetHandler::startNetEvent(int event, Event * e)
+NetHandler::startNetEvent(int event, Event *e)
 {
   (void) event;
   SET_HANDLER((NetContHandler) & NetHandler::mainNetEvent);
@@ -164,7 +226,7 @@ NetHandler::startNetEvent(int event, Event * e)
 // Move VC's enabled on a different thread to the ready list
 //
 void
-NetHandler::process_enabled_list(NetHandler * nh, EThread * t)
+NetHandler::process_enabled_list(NetHandler *nh, EThread *t)
 {
   UnixNetVConnection *vc = NULL;
 
@@ -192,13 +254,13 @@ NetHandler::process_enabled_list(NetHandler * nh, EThread * t)
 // for this period.
 //
 int
-NetHandler::mainNetEvent(int event, Event * e)
+NetHandler::mainNetEvent(int event, Event *e)
 {
   ink_assert(trigger_event == e && (event == EVENT_INTERVAL || event == EVENT_POLL));
   (void) event;
   (void) e;
   EventIO *epd = NULL;
-  int poll_timeout = REAL_DEFAULT_EPOLL_TIMEOUT;
+  int poll_timeout = DEFAULT_POLL_TIMEOUT;
 
   NET_INCREMENT_DYN_STAT(net_handler_run_stat);
 
@@ -207,7 +269,7 @@ NetHandler::mainNetEvent(int event, Event * e)
              !read_enable_list.empty() || !write_enable_list.empty()))
     poll_timeout = 0; // poll immediately returns -- we have triggered stuff to process right now
   else
-    poll_timeout = REAL_DEFAULT_EPOLL_TIMEOUT;
+    poll_timeout = DEFAULT_POLL_TIMEOUT;
 
   PollDescriptor *pd = get_PollDescriptor(trigger_event->ethread);
   UnixNetVConnection *vc = NULL;
@@ -264,7 +326,8 @@ NetHandler::mainNetEvent(int event, Event * e)
     } else if (epd->type == EVENTIO_DNS_CONNECTION) {
       if (epd->data.dnscon != NULL)
         dnsqueue.enqueue(epd->data.dnscon);
-    }
+    } else if (epd->type == EVENTIO_ASYNC_SIGNAL)
+      net_signal_hook_callback(trigger_event->ethread);
     ev_next_event(pd);
   }
 

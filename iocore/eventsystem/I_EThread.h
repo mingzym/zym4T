@@ -29,7 +29,6 @@
 #include "I_Thread.h"
 #include "I_PriorityEventQueue.h"
 #include "I_ProxyAllocator.h"
-
 #include "I_ProtectedQueue.h"
 
 #define PER_THREAD_DATA (1024*1024)
@@ -46,6 +45,7 @@ struct LogConfiguration;
 struct LogEventForwarder;
 struct Event;
 struct SessionBucket;
+struct EventIO;
 
 class IOBufferData;
 class IOBufferBlock;
@@ -331,6 +331,14 @@ public:
   void execute();
   void process_event(Event * e, int calling_code);
   void free_event(Event * e);
+  void (*signal_hook)(EThread *);
+
+#ifdef HAVE_EVENTFD
+  int evfd;
+#else
+  int evpipe[2];
+#endif
+  EventIO *ep;
 
   ThreadType tt;
   Event *oneevent;              // For dedicated event thread

@@ -1027,7 +1027,10 @@ Lrestart:
       buflen = 0;
     }
     Debug("cache_dir_sync", "sync done");
-    trigger = eventProcessor.schedule_in(this, HRTIME_SECONDS(cache_config_dir_sync_frequency));
+    if (event == EVENT_INTERVAL)
+      trigger = e->ethread->schedule_in(this, HRTIME_SECONDS(cache_config_dir_sync_frequency));
+    else
+      trigger = eventProcessor.schedule_in(this, HRTIME_SECONDS(cache_config_dir_sync_frequency));
     return EVENT_CONT;
   }
   if (event == AIO_EVENT_DONE) {

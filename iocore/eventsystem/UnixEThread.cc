@@ -29,6 +29,8 @@
 #include "ink_unused.h"      /* MAGIC_EDITING_TAG */
 #include "P_EventSystem.h"
 
+extern "C" int eventfd(unsigned int initval, int flags);
+
 struct AIOCallback;
 
 #define MAX_HEARTBEATS_MISSED         	10
@@ -41,7 +43,9 @@ EThread::EThread()
    ethreads_to_be_signalled(NULL),
    n_ethreads_to_be_signalled(0),
    main_accept_index(-1),
-   id(NO_ETHREAD_ID), event_types(0), tt(REGULAR), eventsem(NULL)
+   id(NO_ETHREAD_ID), event_types(0), 
+   signal_hook(0),
+   tt(REGULAR), eventsem(NULL)
 {
   memset(thread_private, 0, PER_THREAD_DATA);
 }
@@ -53,12 +57,26 @@ EThread::EThread(ThreadType att, int anid)
     main_accept_index(-1),
     id(anid),
     event_types(0),
+    signal_hook(0),
     tt(att),
     eventsem(NULL)
 {
   ethreads_to_be_signalled = (EThread **) xmalloc(MAX_EVENT_THREADS * sizeof(EThread *));
   memset((char *) ethreads_to_be_signalled, 0, MAX_EVENT_THREADS * sizeof(EThread *));
   memset(thread_private, 0, PER_THREAD_DATA);
+#ifdef HAVE_EVENTFD
+  evfd = eventfd(0, O_NONBLOCK | O_CLOEXEC);
+  if (evfd < 0)
+    ink_release_assert((evfd = eventfd(0,0)) >= 0);
+  fcntl(evfd, F_SETFD, O_CLOEXEC);
+  fcntl(evfd, F_SETFL, O_NONBLOCK);
+#else
+  ink_release_assert(pipe(evpipe) >= 0); 
+  fcntl(evpipe[0], F_SETFD, O_CLOEXEC);
+  fcntl(evpipe[0], F_SETFL, O_NONBLOCK);
+  fcntl(evpipe[1], F_SETFD, O_CLOEXEC);
+  fcntl(evpipe[1], F_SETFL, O_NONBLOCK);
+#endif
 }
 
 EThread::EThread(ThreadType att, Event * e, ink_sem * sem)
@@ -66,7 +84,9 @@ EThread::EThread(ThreadType att, Event * e, ink_sem * sem)
    ethreads_to_be_signalled(NULL),
    n_ethreads_to_be_signalled(0),
    main_accept_index(-1),
-   id(NO_ETHREAD_ID), event_types(0), tt(att), oneevent(e), eventsem(sem)
+   id(NO_ETHREAD_ID), event_types(0), 
+   signal_hook(0),
+   tt(att), oneevent(e), eventsem(sem)
 {
   ink_assert(att == DEDICATED);
   memset(thread_private, 0, PER_THREAD_DATA);
