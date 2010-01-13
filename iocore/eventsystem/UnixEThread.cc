@@ -65,16 +65,16 @@ EThread::EThread(ThreadType att, int anid)
   memset((char *) ethreads_to_be_signalled, 0, MAX_EVENT_THREADS * sizeof(EThread *));
   memset(thread_private, 0, PER_THREAD_DATA);
 #ifdef HAVE_EVENTFD
-  evfd = eventfd(0, O_NONBLOCK | O_CLOEXEC);
+  evfd = eventfd(0, O_NONBLOCK | FD_CLOEXEC);
   if (evfd < 0)
     ink_release_assert((evfd = eventfd(0,0)) >= 0);
-  fcntl(evfd, F_SETFD, O_CLOEXEC);
+  fcntl(evfd, F_SETFD, FD_CLOEXEC);
   fcntl(evfd, F_SETFL, O_NONBLOCK);
 #else
   ink_release_assert(pipe(evpipe) >= 0); 
-  fcntl(evpipe[0], F_SETFD, O_CLOEXEC);
+  fcntl(evpipe[0], F_SETFD, FD_CLOEXEC);
   fcntl(evpipe[0], F_SETFL, O_NONBLOCK);
-  fcntl(evpipe[1], F_SETFD, O_CLOEXEC);
+  fcntl(evpipe[1], F_SETFD, FD_CLOEXEC);
   fcntl(evpipe[1], F_SETFL, O_NONBLOCK);
 #endif
 }
