@@ -141,10 +141,10 @@ static void
 net_signal_hook_callback(EThread *thread) {
 #if HAVE_EVENTFD
   inku64 counter;
-  (void)read(thread->evfd, &counter, sizeof(inku64));
+  NOWARN_UNUSED_RETURN(read(thread->evfd, &counter, sizeof(inku64)));
 #else
   char dummy;
-  (void)read(thread->evpipe[0], &dummy, 1);
+  NOWARN_UNUSED_RETURN(read(thread->evpipe[0], &dummy, 1));
 #endif  
 }
 
@@ -152,10 +152,10 @@ static void
 net_signal_hook_function(EThread *thread) {
 #if HAVE_EVENTFD
   inku64 counter = 1;
-  (void)write(thread->evfd, &counter, sizeof(inku64));
+  NOWARN_UNUSED_RETURN(write(thread->evfd, &counter, sizeof(inku64)));
 #else
   char dummy;
-  (void)write(thread->evpipe[0], &dummy, 1);
+  NOWARN_UNUSED_RETURN(write(thread->evpipe[0], &dummy, 1));
 #endif  
 }
 
