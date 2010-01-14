@@ -191,7 +191,7 @@ Connection::bind_connect(unsigned int target_ip, int target_port, unsigned int m
     if ((res = socketManager.ink_bind(fd, (struct sockaddr *) &bind_sa, sizeof(bind_sa))) < 0)
       goto Lerror;
 
-    Debug("arm_spoofing", "Passed in options opt=%x client_ip=%x and client_port=%d",
+    NetDebug("arm_spoofing", "Passed in options opt=%x client_ip=%x and client_port=%d",
           opt, opt ? opt->spoof_ip : 0, opt ? opt->spoof_port : 0);
   }
 
@@ -246,11 +246,11 @@ Connection::bind_connect(unsigned int target_ip, int target_port, unsigned int m
     if (use_tcp) {
       if (opt->sockopt_flags & 1) {
         safe_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, ON, sizeof(int));
-        Debug("socket", "::bind_connect: setsockopt() TCP_NODELAY on socket");
+        NetDebug("socket", "::bind_connect: setsockopt() TCP_NODELAY on socket");
       }
       if (opt->sockopt_flags & 2) {
         safe_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, ON, sizeof(int));
-        Debug("socket", "::bind_connect: setsockopt() SO_KEEPALIVE on socket");
+        NetDebug("socket", "::bind_connect: setsockopt() SO_KEEPALIVE on socket");
       }
     }
   }

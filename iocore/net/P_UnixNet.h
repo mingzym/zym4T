@@ -69,7 +69,7 @@ struct EventIO
 #else
   int fd;
 #endif
-#if defined(USE_KQUEUE) || (defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGERED_EPOLL))
+#if defined(USE_KQUEUE) || (defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGER))
   int events;
 #endif
   EventLoop event_loop;
@@ -549,7 +549,7 @@ inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
   memset(&ev, 0, sizeof(ev));
   ev.events = e;
   ev.data.ptr = this;
-#ifndef USE_EDGE_TRIGGERED
+#ifndef USE_EDGE_TRIGGER
   events = e;
 #endif
   return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_ADD, fd, &ev);
@@ -571,15 +571,20 @@ inline int EventIO::modify(int e) {
 #if defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGER)
   struct epoll_event ev;
   memset(&ev, 0, sizeof(ev));
-  int ee = events;
+  int new_events = events, old_events = events;
   if (e < 0)
-    ee &= ~(-e);
+    new_events &= ~(-e);
   else
-    ee |= e;
-  events = ee;
-  ev.events = ee;
+    new_events |= e;
+  events = new_events;
+  ev.events = new_events;
   ev.data.ptr = this;
-  return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_MOD, fd, &ev);
+  if (!new_events)
+    return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_DEL, fd, &ev);
+  else if (!old_events)
+    return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_ADD, fd, &ev);
+  else
+    return epoll_ctl(event_loop->epoll_fd, EPOLL_CTL_MOD, fd, &ev);
 #elif defined(USE_KQUEUE) && !defined(USE_EDGE_TRIGGER)
   int n = 0;
   struct kevent ev[2];

@@ -320,7 +320,7 @@ read_from_net(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
     buf.writer()->fill(r);
 #ifdef DEBUG
     if (buf.writer()->write_avail() <= 0)
-      Debug("ssl", "read_from_net, read buffer full");
+      NetDebug("ssl", "read_from_net, read buffer full");
 #endif
     s->vio.ndone += r;
     net_activity(vc, thread);
@@ -333,7 +333,7 @@ read_from_net(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
     ink_assert(ntodo >= 0);
     if (s->vio.ntodo() <= 0) {
       read_signal_done(VC_EVENT_READ_COMPLETE, nh, vc);
-      Debug("ssl", "read_from_net, read finished - signal done");
+      NetDebug("ssl", "read_from_net, read finished - signal done");
       return;
     } else {
       if (read_signal_and_update(VC_EVENT_READ_READY, vc) != EVENT_CONT)
@@ -956,7 +956,7 @@ UnixNetVConnection::acceptEvent(int event, Event *e)
   nh = get_NetHandler(thread);
   PollDescriptor *pd = get_PollDescriptor(thread);
   if (ep.start(pd, this, EVENTIO_READ|EVENTIO_WRITE) < 0) {
-    Debug("iocore_net", "acceptEvent : failed EventIO::start\n");
+    NetDebug("iocore_net", "acceptEvent : failed EventIO::start\n");
     close_UnixNetVConnection(this, e->ethread);
     return EVENT_DONE;
   }
@@ -1069,7 +1069,7 @@ UnixNetVConnection::connectUp(EThread *t)
   // Initialize this UnixNetVConnection
   //
   int res = 0;
-  Debug("arm_spoofing", "connectUp:: interface=%x and options.spoofip=%x\n", _interface, options.spoof_ip);
+  NetDebug("arm_spoofing", "connectUp:: interface=%x and options.spoofip=%x\n", _interface, options.spoof_ip);
   nh = get_NetHandler(t);
 #ifndef USE_EDGE_TRIGGER
   if (_interface || options.local_port || options.spoof_ip)
@@ -1084,7 +1084,7 @@ UnixNetVConnection::connectUp(EThread *t)
 #endif
   if (ep.start(get_PollDescriptor(t), this, EVENTIO_READ|EVENTIO_WRITE) < 0) {
     lerrno = errno;
-    Debug("iocore_net", "connectUp : Failed to add to epoll list\n");
+    NetDebug("iocore_net", "connectUp : Failed to add to epoll list\n");
     action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *) res);
     free(t);
     return CONNECT_FAILURE;
@@ -1119,7 +1119,7 @@ UnixNetVConnection::connectUp(EThread *t)
     nh = get_NetHandler(t);
     PollDescriptor *pd = get_PollDescriptor(t);
     if (ep.start(pd, this, EVENTIO_READ|EVENTIO_WRITE) < 0) {
-      Debug("iocore_net", "connectUp : Failed to add to epoll list\n");
+      NetDebug("iocore_net", "connectUp : Failed to add to epoll list\n");
       lerrno = errno;
       action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *)(intptr_t)res);
       free(t);

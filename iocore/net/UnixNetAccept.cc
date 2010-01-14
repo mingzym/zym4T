@@ -248,7 +248,7 @@ NetAccept::init_accept_per_thread()
     EThread *t = eventProcessor.eventthread[ET_NET][i];
     PollDescriptor *pd = get_PollDescriptor(t);
     if (a->ep.start(pd, a, EVENTIO_READ) < 0)
-      Debug("iocore_net", "error starting EventIO");
+      NetDebug("iocore_net", "error starting EventIO");
     a->mutex = get_NetHandler(t)->mutex;
     t->schedule_every(a, period, etype);
   }
@@ -411,7 +411,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
     if (likely(fd >= 0)) {
       vc->addLogMessage("accepting the connection");
 
-      Debug("epoll", "accepted a new socket: %d", fd);
+      NetDebug("epoll", "accepted a new socket: %d", fd);
       if (send_bufsize > 0) {
         if (unlikely(socketManager.set_sndbuf_size(fd, send_bufsize))) {
           bufsz = ROUNDUP(send_bufsize, 1024);
@@ -434,11 +434,11 @@ NetAccept::acceptFastEvent(int event, void *ep)
       }
       if (sockopt_flags & 1) {  // we have to disable Nagle
         safe_setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, ON, sizeof(int));
-        Debug("socket", "::acceptFastEvent: setsockopt() TCP_NODELAY on socket");
+        NetDebug("socket", "::acceptFastEvent: setsockopt() TCP_NODELAY on socket");
       }
       if (sockopt_flags & 2) {
         safe_setsockopt(fd, SOL_SOCKET, SO_KEEPALIVE, ON, sizeof(int));
-        Debug("socket", "::acceptFastEvent: setsockopt() SO_KEEPALIVE on socket");
+        NetDebug("socket", "::acceptFastEvent: setsockopt() SO_KEEPALIVE on socket");
       }
       do {
         res = safe_nonblocking(fd);
@@ -483,7 +483,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
     SET_CONTINUATION_HANDLER(vc, (NetVConnHandler) & UnixNetVConnection::mainEvent);
 
     if (vc->ep.start(pd, vc, EVENTIO_READ|EVENTIO_WRITE) < 0) {
-      Debug("iocore_net", "acceptFastEvent : Error in inserting fd[%d] in kevent\n", vc->con.fd);
+      NetDebug("iocore_net", "acceptFastEvent : Error in inserting fd[%d] in kevent\n", vc->con.fd);
       close_UnixNetVConnection(vc, e->ethread);
       return EVENT_DONE;
     }
@@ -493,7 +493,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
     // Set the vc as triggered and place it in the read ready queue in case there is already data on the socket.
     // The request will  timeout on the connection if the client has already sent data and it is on the socket
     // ready to be read.  This can occur under heavy load.
-    Debug("iocore_net", "acceptEvent : Setting triggered and adding to the read ready queue");
+    NetDebug("iocore_net", "acceptEvent : Setting triggered and adding to the read ready queue");
     vc->read.triggered = 1;
     vc->nh->read_ready_list.enqueue(vc);
 

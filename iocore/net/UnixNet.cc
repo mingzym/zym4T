@@ -100,7 +100,7 @@ PollCont::pollEvent(int event, Event *e)
     if (likely
         (!net_handler->read_ready_list.empty() || !net_handler->read_ready_list.empty() ||
          !net_handler->read_enable_list.empty() || !net_handler->write_enable_list.empty())) {
-      Debug("epoll", "rrq: %d, wrq: %d, rel: %d, wel: %d", net_handler->read_ready_list.empty(),
+      NetDebug("epoll", "rrq: %d, wrq: %d, rel: %d, wel: %d", net_handler->read_ready_list.empty(),
             net_handler->write_ready_list.empty(), net_handler->read_enable_list.empty(),
             net_handler->write_enable_list.empty());
       poll_timeout = 0;         //poll immediately returns -- we have triggered stuff to process right now
@@ -117,9 +117,9 @@ PollCont::pollEvent(int event, Event *e)
 #elif defined(USE_EPOLL)
   pollDescriptor->result = epoll_wait(pollDescriptor->epoll_fd,
                                       pollDescriptor->ePoll_Triggered_Events, POLL_DESCRIPTOR_SIZE, poll_timeout);
-  Debug("epoll", "[PollCont::pollEvent] epoll_fd: %d, timeout: %d, results: %d", pollDescriptor->epoll_fd, poll_timeout,
+  NetDebug("epoll", "[PollCont::pollEvent] epoll_fd: %d, timeout: %d, results: %d", pollDescriptor->epoll_fd, poll_timeout,
         pollDescriptor->result);
-  Debug("iocore_net", "pollEvent : Epoll fd %d active\n", pollDescriptor->epoll_fd);
+  NetDebug("iocore_net", "pollEvent : Epoll fd %d active\n", pollDescriptor->epoll_fd);
 #elif defined(USE_KQUEUE)
   struct timespec tv;
   tv.tv_sec = poll_timeout / 1000;
@@ -128,9 +128,9 @@ PollCont::pollEvent(int event, Event *e)
                                   pollDescriptor->kq_Triggered_Events,
                                   POLL_DESCRIPTOR_SIZE,
                                   &tv);
-  Debug("kqueue", "[PollCont::pollEvent] kueue_fd: %d, timeout: %d, results: %d", pollDescriptor->kqueue_fd, poll_timeout,
+  NetDebug("kqueue", "[PollCont::pollEvent] kueue_fd: %d, timeout: %d, results: %d", pollDescriptor->kqueue_fd, poll_timeout,
         pollDescriptor->result);
-  Debug("iocore_net", "pollEvent : KQueue fd %d active\n", pollDescriptor->kqueue_fd);
+  NetDebug("iocore_net", "pollEvent : KQueue fd %d active\n", pollDescriptor->kqueue_fd);
 #else
 #error port me
 #endif
@@ -297,31 +297,31 @@ NetHandler::mainNetEvent(int event, Event *e)
     epd = (EventIO*) get_ev_data(pd,x);
     if (epd->type == EVENTIO_READWRITE_VC) {
       vc = epd->data.vc;
-      if (get_ev_events(pd,x) & (EVENTIO_READ)) {
+      if (get_ev_events(pd,x) & (EVENTIO_READ|EVENTIO_ERROR)) {
         vc->read.triggered = 1;
         vc->addLogMessage("read triggered");
         if (!read_ready_list.in(vc))
           read_ready_list.enqueue(vc);
         else if (get_ev_events(pd,x) & EVENTIO_ERROR) {
           // check for unhandled epoll events that should be handled
-          Debug("epoll_miss", "Unhandled epoll event on read: 0x%04x read.enabled=%d closed=%d read.netready_queue=%d",
+          NetDebug("epoll_miss", "Unhandled epoll event on read: 0x%04x read.enabled=%d closed=%d read.netready_queue=%d",
                 get_ev_events(pd,x), vc->read.enabled, vc->closed, read_ready_list.in(vc));
         }
       }
       vc = epd->data.vc;
-      if (get_ev_events(pd,x) & EVENTIO_WRITE) {
+      if (get_ev_events(pd,x) & (EVENTIO_WRITE|EVENTIO_ERROR)) {
         vc->write.triggered = 1;
         vc->addLogMessage("write triggered");
         if (!write_ready_list.in(vc))
           write_ready_list.enqueue(vc);
         else if (get_ev_events(pd,x) & EVENTIO_ERROR) {
           // check for unhandled epoll events that should be handled
-          Debug("epoll_miss",
+          NetDebug("epoll_miss",
                 "Unhandled epoll event on write: 0x%04x write.enabled=%d closed=%d write.netready_queue=%d",
                 get_ev_events(pd,x), vc->write.enabled, vc->closed, write_ready_list.in(vc));
         }
-      } else if (!(get_ev_events(pd,x) & EVENTIO_READ) && get_ev_events(pd,x) & EVENTIO_ERROR) {
-        Debug("epoll_miss", "Unhandled epoll event: 0x%04x", get_ev_events(pd,x));
+      } else if (!get_ev_events(pd,x) & EVENTIO_ERROR) {
+        NetDebug("epoll_miss", "Unhandled epoll event: 0x%04x", get_ev_events(pd,x));
       }
     } else if (epd->type == EVENTIO_DNS_CONNECTION) {
       if (epd->data.dnscon != NULL)
@@ -333,7 +333,7 @@ NetHandler::mainNetEvent(int event, Event *e)
 
   pd->result = 0;
 
-#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+#if defined(USE_EDGE_TRIGGER)
   UnixNetVConnection *next_vc = NULL;
   vc = read_ready_list.head;
   while (vc) {
@@ -346,19 +346,19 @@ NetHandler::mainNetEvent(int event, Event *e)
     else if (vc->read.enabled && vc->read.triggered)
       vc->net_read_io(this, trigger_event->ethread);
     else if (!vc->read.enabled)
-#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+#if defined(USE_EDGE_TRIGGER)
       read_ready_list.remove(vc);
 #else
       vc->ep.modify(-EVENTIO_READ);
 #endif
-#if defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+#if defined(USE_EDGE_TRIGGER)
     vc = next_vc;
   }
 #else
   }
 #endif
 
-#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+#if defined(USE_EDGE_TRIGGER)
   next_vc = NULL;
   vc = write_ready_list.head;
   while (vc) {
@@ -371,12 +371,12 @@ NetHandler::mainNetEvent(int event, Event *e)
     else if (vc->write.enabled && vc->write.triggered)
       write_to_net(this, vc, pd, trigger_event->ethread);
     else if (!vc->write.enabled)
-#if !defined(USE_LIBEV) && defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+#if defined(USE_EDGE_TRIGGER)
       write_ready_list.remove(vc);
 #else
       vc->ep.modify(-EVENTIO_WRITE);
 #endif
-#if defined(USE_EPOLL) && defined(USE_EDGE_TRIGGER_EPOLL)
+#if defined(USE_EDGE_TRIGGER)
     vc = next_vc;
   }
 #else
