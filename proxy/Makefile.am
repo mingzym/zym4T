@@ -19,7 +19,11 @@ AM_CPPFLAGS = \
   -I$(srcdir)/mgmt2/preparse \
   -I$(srcdir)/mgmt2/utils \
   -I$(srcdir)/mgmt2/web2 \
-  -I$(srcdir)/api/include
+  -I$(srcdir)/api/include \
+  -DPKGLOGDIR=\"$(pkglogdir)\" \
+  -DPREFIX=\"$(prefix)\" \
+  -DPKGSYSCONFDIR=\"$(pkgsysconfdir)\" \
+  -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\"
 
 bin_PROGRAMS = \
   traffic_server \
@@ -52,12 +56,6 @@ EXTRA_LIBRARIES	= \
   libTrafficServerStandalone.a
 
 EXTRA_DIST = InkAPITestTool.cc
-
-traffic_server_CPPFLAGS = \
-  -DPREFIX=\"$(prefix)\" \
-  -DPKGSYSCONFDIR=\"$(pkgsysconfdir)\" \
-  -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\" \
-  $(AM_CPPFLAGS)
 
 traffic_server_SOURCES = \
   AbstractBuffer.cc \
@@ -214,9 +212,6 @@ logcat_LDADD = \
   @LIBREGEX@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
-logstats_CPPFLAGS = \
-  -DPKGLOGDIR=\"$(pkglogdir)\" \
-  $(AM_CPPFLAGS)
 logstats_SOURCES = logstats.cc
 logstats_LDFLAGS = @EXTRA_CXX_LDFLAGS@
 logstats_LDADD = \
