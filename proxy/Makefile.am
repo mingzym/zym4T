@@ -23,7 +23,8 @@ AM_CPPFLAGS = \
   -DPKGLOGDIR=\"$(pkglogdir)\" \
   -DPREFIX=\"$(prefix)\" \
   -DPKGSYSCONFDIR=\"$(pkgsysconfdir)\" \
-  -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\"
+  -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\" \
+  -DPKGSYSUSER=\"$(pkgsysuser)\"
 
 bin_PROGRAMS = \
   traffic_server \
@@ -360,7 +361,7 @@ versiondir = $(pkglocalstatedir)
 dist_version_DATA = TS_version
 
 install-exec-local:
-	$(INSTALL) -d -o nobody -g nobody $(pkglocalstatedir) $(pkglogdir) $(pkgsysconfdir) $(pkgsysconfdir)/internal
+	$(INSTALL) -d -o $(pkgsysuser) -g $(pkgsysgroup) $(pkglocalstatedir) $(pkglogdir) $(pkgsysconfdir) $(pkgsysconfdir)/internal
 	$(INSTALL) -d $(pkglibexecdir)
 
 uninstall-local:

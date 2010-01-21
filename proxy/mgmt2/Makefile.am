@@ -24,7 +24,8 @@ AM_CPPFLAGS = \
   -DPKGLIBEXECDIR=\"$(pkglibexecdir)\" \
   -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\" \
   -DPKGLOGDIR=\"$(pkglogdir)\" \
-  -DPKGSYSCONFDIR=\"$(pkgsysconfdir)\"
+  -DPKGSYSCONFDIR=\"$(pkgsysconfdir)\" \
+  -DPKGSYSUSER=\"$(pkgsysuser)\" 
 
 MGMT_DEFS = @MGMT_DEFS@
 DEFS += $(MGMT_DEFS)
