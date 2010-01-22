@@ -109,6 +109,8 @@ traffic_server_SOURCES = \
   Prefetch.cc \
   Prefetch.h \
   Raf.h \
+  RegressionSM.h \
+  RegressionSM.cc \
   RemapAPI.h \
   ReverseProxy.cc \
   ReverseProxy.h \
