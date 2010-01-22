@@ -76,7 +76,7 @@
 #endif
 
 
-#if (HOST_OS != linux) && (HOST_OS != darwin) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != darwin) && (HOST_OS != freebsd) && (HOST_OS != solaris)
 extern "C"
 {
   int gethostname(char *name, int namelen);
@@ -155,7 +155,11 @@ check_lockfile()
   } else {
     char *reason = strerror(-err);
     if (err == 0) {
+#if (HOST_OS == solaris)
+      fprintf(stderr, "FATAL: Lockfile '%s' says server already running as PID %d\n", lockfile, (int)holding_pid);
+#else
       fprintf(stderr, "FATAL: Lockfile '%s' says server already running as PID %d\n", lockfile, holding_pid);
+#endif
       mgmt_elog(stderr, "FATAL: Lockfile '%s' says server already running as PID %d\n", lockfile, holding_pid);
     } else {
       fprintf(stderr, "FATAL: Can't open server lockfile '%s' (%s)\n", lockfile, (reason ? reason : "Unknown Reason"));
@@ -176,7 +180,11 @@ check_lockfile()
     fprintf(stderr, "FATAL: Can't acquire manager lockfile '%s'", lockfile);
     mgmt_elog(stderr, "FATAL: Can't acquire manager lockfile '%s'", lockfile);
     if (err == 0) {
+#if (HOST_OS == solaris)
+      fprintf(stderr, " (Lock file held by process ID %d)\n", (int)holding_pid);
+#else
       fprintf(stderr, " (Lock file held by process ID %d)\n", holding_pid);
+#endif
       mgmt_elog(stderr, " (Lock file held by process ID %d)\n", holding_pid);
     } else if (reason) {
       fprintf(stderr, " (%s)\n", reason);
@@ -1041,7 +1049,11 @@ SignalAlrmHandler(int sig)
 #if (HOST_OS != linux) && (HOST_OS != freebsd)
   if (t) {
     if (t->si_code <= 0) {
+#if (HOST_OS == solaris)
+      fprintf(stderr, "[TrafficManager] ==> User Alarm from pid: %d uid: %d\n", (int)t->si_pid, t->si_uid);
+#else
       fprintf(stderr, "[TrafficManager] ==> User Alarm from pid: %d uid: %d\n", t->si_pid, t->si_uid);
+#endif
       mgmt_elog(stderr, "[TrafficManager] ==> User Alarm from pid: %d uid: %d\n", t->si_pid, t->si_uid);
     } else {
       fprintf(stderr, "[TrafficManager] ==> Kernel Alarm Reason: %d\n", t->si_code);
@@ -1068,7 +1080,11 @@ SignalHandler(int sig)
 #if (HOST_OS != linux) && (HOST_OS != freebsd)
   if (t) {
     if (t->si_code <= 0) {
+#if (HOST_OS == solaris)
+      fprintf(stderr, "[TrafficManager] ==> User Sig %d from pid: %d uid: %d\n", sig, (int)t->si_pid, t->si_uid);
+#else
       fprintf(stderr, "[TrafficManager] ==> User Sig %d from pid: %d uid: %d\n", sig, t->si_pid, t->si_uid);
+#endif
       mgmt_elog(stderr, "[TrafficManager] ==> User Sig %d from pid: %d uid: %d\n", sig, t->si_pid, t->si_uid);
     } else {
       fprintf(stderr, "[TrafficManager] ==> Kernel Sig %d; Reason: %d\n", sig, t->si_code);

@@ -185,6 +185,7 @@ public:
   int readSignalDone(int event, NetHandler * nh);
   int readSignalAndUpdate(int event);
   void readReschedule(NetHandler * nh);
+  void writeReschedule(NetHandler * nh);
   void netActivity(EThread * lthread);
 
   Action *action()

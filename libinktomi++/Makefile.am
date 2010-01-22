@@ -7,7 +7,8 @@ check_PROGRAMS = test_atomic test_freelist test_arena
 TESTS = $(check_PROGRAMS)
 noinst_LIBRARIES = libinktomi++.a
 
-libinktomi___a_CCASFLAGS = -Wa,--32
+#libinktomi___a_CCASFLAGS = -Wa,--32
+libinktomi___a_CCASFLAGS = -Wa,-32
 libinktomi___a_SOURCES = \
   Allocator.cc \
   Allocator.h \

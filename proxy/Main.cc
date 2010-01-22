@@ -46,7 +46,7 @@ extern "C" int plock(int);
 #include <sys/filio.h>
 #endif
 #include <syslog.h>
-#if (HOST_OS != darwin) && (HOST_OS != freebsd)
+#if (HOST_OS != darwin) && (HOST_OS != freebsd) && (HOST_OS != solaris)
 #include <mcheck.h>
 #endif
 
@@ -300,6 +300,8 @@ ArgumentDescription argument_descriptions[] = {
 
   {"accept_mss", ' ', "MSS for client connections", "I", &accept_mss,
    NULL, NULL},
+  {"poll_timeout", 't', "poll timeout in milliseconds", "I", &net_config_poll_timeout,
+   NULL, NULL},
   {"help", 'h', "HELP!", NULL, NULL, NULL, usage},
 };
 int n_argument_descriptions = SIZE(argument_descriptions);
@@ -400,7 +402,11 @@ check_lockfile()
     fprintf(stderr, "WARNING: Can't acquire lockfile '%s'", lockfile);
 
     if ((err == 0) && (holding_pid != -1)) {
+#if (HOST_OS == solaris)
+      fprintf(stderr, " (Lock file held by process ID %d)\n", (int)holding_pid);
+#else
       fprintf(stderr, " (Lock file held by process ID %d)\n", holding_pid);
+#endif
     } else if ((err == 0) && (holding_pid == -1)) {
       fprintf(stderr, " (Lock file exists, but can't read process ID)\n");
     } else if (reason) {

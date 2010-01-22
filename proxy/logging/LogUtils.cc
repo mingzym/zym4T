@@ -45,8 +45,11 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
-// need following instead of <netdb.h>
-#include "/usr/include/netdb.h"
+#if (HOST_OS == solaris)
+#include <netdb.h>
+#else
+#include "/usr/include/netdb.h" // need following instead of <netdb.h>
+#endif
 
 
 #include "P_RecProcess.h"

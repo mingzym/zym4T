@@ -93,7 +93,7 @@ Lockfile::Open(pid_t * holding_pid)
     *t = '\0';
 
     // coverity[secure_coding]
-    if (sscanf(buf, "%d\n", &val) != 1) {
+    if (sscanf(buf, "%d\n", (int*)&val) != 1) {
       *holding_pid = 0;
     } else {
       *holding_pid = val;

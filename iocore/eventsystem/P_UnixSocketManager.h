@@ -503,8 +503,47 @@ SocketManager::kevent(int kq, const struct kevent *changelist, int nchanges,
 
   return r;
 }
+#elif defined(USE_PORT)
+inline int
+SocketManager::port_create() 
+{
+  return ::port_create();
+}
 
-#endif
+inline int
+SocketManager::port_associate(int port, int source, uintptr_t obj,
+                              int events, void *user) 
+{
+  int r;
+  r =::port_associate(port, source, obj, events, user);
+  if(r < 0) 
+    r = -errno;
+  return r;
+}
+
+inline int
+SocketManager::port_dissociate(int port, int source, uintptr_t obj) 
+{
+  int r;
+  r =::port_dissociate(port, source, obj);
+  if(r < 0) 
+    r = -errno;
+  return r;
+}
+
+inline int
+SocketManager::port_getn(int port, port_event_t *list, uint_t max,
+                         uint_t *nget, timespec_t *timeout) 
+{
+  int r;
+  do {
+    if ((r =::port_getn(port, list, max, nget, timeout)) >= 0)
+      break;
+    r = -errno;
+  } while (errno == -EINTR); //TODO: possible EAGAIN(undocumented)
+  return r;
+}
+#endif /* USE_PORT */
 
 
 inline int

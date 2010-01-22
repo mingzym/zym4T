@@ -31,6 +31,10 @@
 
 #include <math.h>
 #include <sys/utsname.h>
+#if (HOST_OS == solaris)
+#include <sys/types.h>
+#include <unistd.h>
+#endif
 
 #include <iostream>
 #include <fstream>
@@ -1760,6 +1764,7 @@ main(int argc, char *argv[])
   int res, cnt;
   int main_fd;
   unsigned max_age;
+  struct flock lck;
 
   // build the application information structure
   appVersionInfo.setup(PROGRAM_NAME, PROGRAM_VERSION, __DATE__, __TIME__, BUILD_MACHINE, BUILD_PERSON, "");
@@ -1899,8 +1904,14 @@ main(int argc, char *argv[])
       my_exit(YMON_CRITICAL, ymon_notice);
     }
     // Get an exclusive lock, if possible. Try for up to 20 seconds.
+    // Use more portable & standard fcntl() over flock()
+    lck.l_type = F_WRLCK;
+    lck.l_whence = 0; /* offset l_start from beginning of file*/
+    lck.l_start = (off_t)0;
+    lck.l_len = (off_t)0; /* till end of file*/
     cnt = 10;
-    while (((res = flock(state_fd, LOCK_EX | LOCK_NB)) < 0) && --cnt) {
+    // while (((res = flock(state_fd, LOCK_EX | LOCK_NB)) < 0) && --cnt) {
+    while (((res = fcntl(state_fd, F_SETLK, &lck)) < 0) && --cnt) {
       switch (errno) {
       case EWOULDBLOCK:
       case EINTR:
@@ -2033,7 +2044,9 @@ main(int argc, char *argv[])
           ymon_status = YMON_WARNING;
       }
     }
-    flock(state_fd, LOCK_UN);
+    //flock(state_fd, LOCK_UN);
+    lck.l_type = F_UNLCK;
+    fcntl(state_fd, F_SETLK, &lck);
     close(main_fd);
     close(state_fd);
   } else {

@@ -81,6 +81,8 @@
 #include <sys/epoll.h>
 #elif defined(USE_KQUEUE)
 #include <sys/event.h>
+#elif defined(USE_PORT)
+#include <port.h>
 #endif
 
 

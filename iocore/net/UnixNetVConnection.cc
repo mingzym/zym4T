@@ -227,6 +227,7 @@ read_from_net(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
 
   if (!lock || lock.m.m_ptr != s->vio.mutex.m_ptr) {
     vc->addLogMessage("can't get lock");
+    read_reschedule(nh, vc);
     return;
   }
   // if it is not enabled.  
@@ -320,7 +321,7 @@ read_from_net(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
     buf.writer()->fill(r);
 #ifdef DEBUG
     if (buf.writer()->write_avail() <= 0)
-      NetDebug("ssl", "read_from_net, read buffer full");
+      NetDebug("iocore_net", "read_from_net, read buffer full");
 #endif
     s->vio.ndone += r;
     net_activity(vc, thread);
@@ -333,7 +334,7 @@ read_from_net(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
     ink_assert(ntodo >= 0);
     if (s->vio.ntodo() <= 0) {
       read_signal_done(VC_EVENT_READ_COMPLETE, nh, vc);
-      NetDebug("ssl", "read_from_net, read finished - signal done");
+      NetDebug("iocore_net", "read_from_net, read finished - signal done");
       return;
     } else {
       if (read_signal_and_update(VC_EVENT_READ_READY, vc) != EVENT_CONT)
@@ -381,8 +382,11 @@ write_to_net_io(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
 
   MUTEX_TRY_LOCK_FOR(lock, s->vio.mutex, thread, s->vio._cont);
 
-  if (!lock || lock.m.m_ptr != s->vio.mutex.m_ptr)
+  if (!lock || lock.m.m_ptr != s->vio.mutex.m_ptr) {
+    vc->addLogMessage("can't get lock");
+    write_reschedule(nh, vc);
     return;
+  }
 
   // This function will always return true unless
   // vc is an SSLNetVConnection.
@@ -525,6 +529,7 @@ write_to_net_io(NetHandler *nh, UnixNetVConnection *vc, EThread *thread)
 VIO *
 UnixNetVConnection::do_io_read(Continuation *c, ink64 nbytes, MIOBuffer *buf)
 {
+  addLogMessage("do_io_read");
   ink_assert(!closed);
   if (buf)
     read.vio.buffer.writer_for(buf);
@@ -903,6 +908,12 @@ void
 UnixNetVConnection::readReschedule(NetHandler *nh)
 {
   read_reschedule(nh, this);
+}
+
+void
+UnixNetVConnection::writeReschedule(NetHandler *nh)
+{
+  write_reschedule(nh, this);
 }
 
 void

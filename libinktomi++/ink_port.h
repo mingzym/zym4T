@@ -64,7 +64,7 @@ typedef off_t ink_off_t;
 #define _CRTIMP
 #define HAVE_64_BIT
 
-#if (HOST_OS == linux) || (HOST_OS == freebsd) || (HOST_OS == darwin)
+#if (HOST_OS == linux) || (HOST_OS == freebsd) || (HOST_OS == darwin) || (HOST_OS == solaris)
 #define POSIX_THREAD
 #define POSIX_THREAD_10031c
 #else

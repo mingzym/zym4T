@@ -29,6 +29,49 @@
 
 #define USE_EDGE_TRIGGER_EPOLL  1
 #define USE_EDGE_TRIGGER_KQUEUE  1
+#define USE_EDGE_TRIGGER_PORT  1
+
+
+#define EVENTIO_NETACCEPT               1
+#define EVENTIO_READWRITE_VC		2
+#define EVENTIO_DNS_CONNECTION		3
+#define EVENTIO_UDP_CONNECTION		4
+#define EVENTIO_ASYNC_SIGNAL		5
+
+#if defined(USE_LIBEV)
+#define EVENTIO_READ EV_READ
+#define EVENTIO_WRITE EV_WRITE
+#define EVENTIO_ERROR EV_ERROR
+#elif defined(USE_EPOLL)
+#ifdef USE_EDGE_TRIGGER_EPOLL
+#define USE_EDGE_TRIGGER 1
+#define EVENTIO_READ (EPOLLIN|EPOLLET)
+#define EVENTIO_WRITE (EPOLLOUT|EPOLLET)
+#else
+#define EVENTIO_READ EPOLLIN
+#define EVENTIO_WRITE EPOLLOUT
+#endif
+#define EVENTIO_ERROR (EPOLLERR|EPOLLPRI|EPOLLHUP)
+#elif defined(USE_KQUEUE)
+#ifdef USE_EDGE_TRIGGER_KQUEUE
+#define USE_EDGE_TRIGGER 1
+#define INK_EV_EDGE_TRIGGER EV_CLEAR
+#else
+#define INK_EV_EDGE_TRIGGER 0
+#endif
+#define EVENTIO_READ INK_EVP_IN
+#define EVENTIO_WRITE INK_EVP_OUT
+#define EVENTIO_ERROR (0x010|0x002|0x020) // ERR PRI HUP
+#elif defined(USE_PORT)
+#ifdef USE_EDGE_TRIGGER_PORT
+#define USE_EDGE_TRIGGER 1
+#endif
+#define EVENTIO_READ  POLLIN
+#define EVENTIO_WRITE POLLOUT
+#define EVENTIO_ERROR (POLLERR|POLLPRI|POLLHUP)
+#else
+#error port me
+#endif
 
 #ifdef USE_LIBEV
 #define EV_MINPRI 0
@@ -53,7 +96,7 @@ struct ev_loop
 #undef VAR
 };
 extern "C" void fd_change(struct ev_loop *, int fd, int flags);
-#endif
+#endif /* USE_LIBEV */
 
 class PollDescriptor;
 typedef PollDescriptor *EventLoop;
@@ -66,10 +109,12 @@ struct EventIO
 {
 #ifdef USE_LIBEV
   ev_io eio;
+#define evio_get_port(e) ((e)->eio.fd)
 #else
   int fd;
+#define evio_get_port(e) ((e)->fd)
 #endif
-#if defined(USE_KQUEUE) || (defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGER))
+#if defined(USE_KQUEUE) || (defined(USE_EPOLL) && !defined(USE_EDGE_TRIGGER)) || defined(USE_PORT)
   int events;
 #endif
   EventLoop event_loop;
@@ -110,39 +155,6 @@ struct EventIO
 #include "P_UnixUDPConnection.h"
 #include "P_UnixPollDescriptor.h"
 
-#define EVENTIO_NETACCEPT               1
-#define EVENTIO_READWRITE_VC		2
-#define EVENTIO_DNS_CONNECTION		3
-#define EVENTIO_UDP_CONNECTION		4
-#define EVENTIO_ASYNC_SIGNAL		5
-
-#if defined(USE_LIBEV)
-#define EVENTIO_READ EV_READ
-#define EVENTIO_WRITE EV_WRITE
-#define EVENTIO_ERROR EV_ERROR
-#elif defined(USE_EPOLL)
-#ifdef USE_EDGE_TRIGGER_EPOLL
-#define USE_EDGE_TRIGGER 1
-#define EVENTIO_READ (EPOLLIN|EPOLLET)
-#define EVENTIO_WRITE (EPOLLOUT|EPOLLET)
-#else
-#define EVENTIO_READ EPOLLIN
-#define EVENTIO_WRITE EPOLLOUT
-#endif
-#define EVENTIO_ERROR (EPOLLERR|EPOLLPRI|EPOLLHUP)
-#elif defined(USE_KQUEUE)
-#ifdef USE_EDGE_TRIGGER_KQUEUE
-#define USE_EDGE_TRIGGER 1
-#define INK_EV_EDGE_TRIGGER EV_CLEAR
-#else
-#define INK_EV_EDGE_TRIGGER 0
-#endif
-#define EVENTIO_READ INK_EVP_IN
-#define EVENTIO_WRITE INK_EVP_OUT
-#define EVENTIO_ERROR (0x010|0x002|0x020) // ERR PRI HUP
-#else
-#error port me
-#endif
 
 struct UnixNetVConnection;
 struct NetHandler;
@@ -193,8 +205,7 @@ extern int http_accept_port_number;
 #define MAX_NET_BUCKETS                           256
 #define MAX_EPOLL_ARRAY_SIZE                      (1024*16)
 #define MAX_EPOLL_TIMEOUT                         50    /* mseconds */
-#define DEFAULT_POLL_TIMEOUT                      10    /* mseconds */
-
+/* NOTE: moved DEFAULT_POLL_TIMEOUT to I_NetConfig.h */
 #define NET_THROTTLE_DELAY                        50    /* mseconds */
 #define INK_MIN_PRIORITY                          0
 
@@ -211,11 +222,12 @@ struct PollCont:public Continuation
   PollDescriptor *nextPollDescriptor;
   int poll_timeout;
 
-  PollCont(ProxyMutex * m);
-  PollCont(ProxyMutex * m, NetHandler * nh);
+  PollCont(ProxyMutex * m, int pt = net_config_poll_timeout);
+  PollCont(ProxyMutex * m, NetHandler * nh, int pt = net_config_poll_timeout);
   ~PollCont();
   int pollEvent(int event, Event * e);
 };
+
 
 //
 // NetHandler
@@ -493,7 +505,7 @@ inline int EventIO::start(EventLoop l, UnixUDPConnection *vc, int events) {
 inline int EventIO::close() {
   stop();
   switch (type) {
-    default: assert(!"case");
+    default: ink_assert(!"case");
     case EVENTIO_DNS_CONNECTION: return data.dnscon->close(); break;
     case EVENTIO_NETACCEPT: return data.na->server.close(); break;
     case EVENTIO_READWRITE_VC: return data.vc->con.close(); break;
@@ -538,7 +550,7 @@ inline int EventIO::stop() {
   return 0;
 }
 
-#else
+#else /* !USE_LIBEV */
 
 inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
   data.c = c;
@@ -562,6 +574,11 @@ inline int EventIO::start(EventLoop l, int afd, Continuation *c, int e) {
   if (e & EVENTIO_WRITE)
     EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_ADD|INK_EV_EDGE_TRIGGER, 0, 0, this);
   return kevent(l->kqueue_fd, &ev[0], n, NULL, 0, NULL);
+#elif defined(USE_PORT)
+  events = e; 
+  int retval = port_associate(event_loop->port_fd, PORT_SOURCE_FD, fd, events, this); 
+  NetDebug("iocore_eventio", "[EventIO::start] e(%d), events(%d), %d[%s]=port_associate(%d,%d,%d,%d,%p)", e, events, retval, retval<0? strerror(errno) : "ok", event_loop->port_fd, PORT_SOURCE_FD, fd, events, this);
+  return retval;
 #else
 #error port me
 #endif
@@ -607,6 +624,33 @@ inline int EventIO::modify(int e) {
     return kevent(event_loop->kqueue_fd, &ev[0], n, NULL, 0, NULL);
   else
     return 0;
+#elif defined(USE_PORT)
+  int n = 0;
+  int ne = e;
+  if (e < 0) {
+    if (((-e) & events)) {
+      ne = ~(-e) & events;
+      if ((-e) & EVENTIO_READ)
+	n++;
+      if ((-e) & EVENTIO_WRITE)
+	n++;
+    } 
+  } else {
+    if (!(e & events)) {
+      ne = events | e;
+      if (e & EVENTIO_READ)
+	n++;
+      if (e & EVENTIO_WRITE)
+	n++;
+    } 
+  }
+  if (n && ne && event_loop) {
+    events = ne;
+    int retval = port_associate(event_loop->port_fd, PORT_SOURCE_FD, fd, events, this); 
+    NetDebug("iocore_eventio", "[EventIO::modify] e(%d), ne(%d), events(%d), %d[%s]=port_associate(%d,%d,%d,%d,%p)", e, ne, events, retval, retval<0? strerror(errno) : "ok", event_loop->port_fd, PORT_SOURCE_FD, fd, events, this);
+    return retval;
+  }
+  return 0;
 #else
   return 0;
 #endif
@@ -625,6 +669,23 @@ inline int EventIO::refresh(int e) {
     return kevent(event_loop->kqueue_fd, &ev[0], n, NULL, 0, NULL);
   else
     return 0;
+#elif defined(USE_PORT)
+  int n = 0;
+  int ne = e;
+  if ((e & events)) {
+    ne = events | e;
+    if (e & EVENTIO_READ)
+      n++;
+    if (e & EVENTIO_WRITE)
+      n++;
+    if (n && ne && event_loop) {
+      events = ne;
+      int retval = port_associate(event_loop->port_fd, PORT_SOURCE_FD, fd, events, this); 
+      NetDebug("iocore_eventio", "[EventIO::refresh] e(%d), ne(%d), events(%d), %d[%s]=port_associate(%d,%d,%d,%d,%p)", e, ne, events, retval, retval<0? strerror(errno) : "ok", event_loop->port_fd, PORT_SOURCE_FD, fd, events, this);
+      return retval;
+    } 
+  } 
+  return 0;
 #else
   return 0;
 #endif
@@ -650,6 +711,10 @@ inline int EventIO::stop() {
       EV_SET(&ev[n++], fd, EVFILT_WRITE, EV_DELETE, 0, 0, this);
     return kevent(event_loop->kqueue_fd, &ev[0], n, NULL, 0, NULL);
 #endif
+#elif defined(USE_PORT)
+    int retval = port_dissociate(event_loop->port_fd, PORT_SOURCE_FD, fd);
+    NetDebug("iocore_eventio", "[EventIO::stop] %d[%s]=port_dissociate(%d,%d,%d)", retval, retval<0? strerror(errno) : "ok", event_loop->port_fd, PORT_SOURCE_FD, fd);
+    return retval;
 #else
 #error port me
 #endif
@@ -658,6 +723,6 @@ inline int EventIO::stop() {
   return 0;
 }
 
-#endif
+#endif /* !USE_LIBEV */
 
 #endif

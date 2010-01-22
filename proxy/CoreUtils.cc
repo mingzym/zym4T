@@ -130,14 +130,14 @@ int framepointer = 0;
 int program_counter = 0;
 #endif  // linux check
 
-#if (HOST_OS == darwin) || (HOST_OS == freebsd)
+#if (HOST_OS == darwin) || (HOST_OS == freebsd) || (HOST_OS == solaris) // FIXME: solaris x86
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 #include "inktomi++.h"
 #include "CoreUtils.h"
-#endif
+#endif /* darwin || freebsd || solaris */
 
 #ifdef READ_CORE_WMT
 #include "WMT-Debug.h"

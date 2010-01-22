@@ -58,25 +58,30 @@ struct PollDescriptor
   struct epoll_event ePoll_Triggered_Events[POLL_DESCRIPTOR_SIZE];
 #elif defined(USE_KQUEUE)
   int kqueue_fd;
+#elif defined(USE_PORT)
+  int port_fd;
 #else
 #error port me
 #endif
 
 #if defined(USE_LIBEV)
+#define get_ev_port(a) ((a)->eio->backend_fd)
 #define get_ev_events(a,x) (a->eio->pendings[0] + a->eio->pendingcnt[0] - 1)->events
 #define get_ev_data(a,x) ((EventIO*)(a->eio->pendings[0] + a->eio->pendingcnt[0] - 1)->w->cb)
-#define ev_next_event(x) do { \
-    (x->eio->pendings[0] + x->eio->pendingcnt[0] - 1)->w->pending = 0; \
-    x->eio->pendingcnt[0]--;                               \
+#define ev_next_event(a,x) do {					       \
+    (a->eio->pendings[0] + a->eio->pendingcnt[0] - 1)->w->pending = 0; \
+    a->eio->pendingcnt[0]--;                               \
   } while (0)
 #elif defined(USE_EPOLL)
+#define get_ev_port(a) ((a)->epoll_fd)
 #define get_ev_events(a,x) ((a)->ePoll_Triggered_Events[(x)].events)
 #define get_ev_data(a,x) ((a)->ePoll_Triggered_Events[(x)].data.ptr)
-#define ev_next_event(x)
+#define ev_next_event(a,x)
 #elif defined(USE_KQUEUE)
   struct kevent kq_Triggered_Events[POLL_DESCRIPTOR_SIZE];
   /* we define these here as numbers, because for kqueue mapping them to a combination of 
  * filters / flags is hard to do. */
+#define get_ev_port(a) ((a)->kqueue_fd)
 #define get_ev_events(a,x) ((a)->kq_event_convert((a)->kq_Triggered_Events[(x)].filter, (a)->kq_Triggered_Events[(x)].flags))
 #define get_ev_data(a,x) ((a)->kq_Triggered_Events[(x)].udata)
   int kq_event_convert(int16_t event, uint16_t flags)
@@ -95,7 +100,14 @@ struct PollDescriptor
     }
     return r;
   }
-#define ev_next_event(x)
+#define ev_next_event(a,x)
+#elif defined(USE_PORT)
+  port_event_t Port_Triggered_Events[POLL_DESCRIPTOR_SIZE];
+#define get_ev_port(a) ((a)->port_fd)
+#define get_ev_events(a,x) ((a)->Port_Triggered_Events[(x)].portev_events)
+#define get_ev_data(a,x) ((a)->Port_Triggered_Events[(x)].portev_user)
+#define get_ev_odata(a,x) ((a)->Port_Triggered_Events[(x)].portev_object)
+#define ev_next_event(a,x)
 #else
 #error port to your os
 #endif
@@ -122,6 +134,9 @@ struct PollDescriptor
 #elif defined(USE_KQUEUE)
     kqueue_fd = kqueue();
     memset(kq_Triggered_Events, 0, sizeof(kq_Triggered_Events));
+#elif defined(USE_PORT)
+    port_fd = port_create();
+    memset(Port_Triggered_Events, 0, sizeof(Port_Triggered_Events));
 #else
 #error port to your os
 #endif

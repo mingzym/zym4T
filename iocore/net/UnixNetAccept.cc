@@ -248,7 +248,7 @@ NetAccept::init_accept_per_thread()
     EThread *t = eventProcessor.eventthread[ET_NET][i];
     PollDescriptor *pd = get_PollDescriptor(t);
     if (a->ep.start(pd, a, EVENTIO_READ) < 0)
-      NetDebug("iocore_net", "error starting EventIO");
+      Warning("[NetAccept::init_accept_per_thread]:error starting EventIO");
     a->mutex = get_NetHandler(t)->mutex;
     t->schedule_every(a, period, etype);
   }
@@ -411,7 +411,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
     if (likely(fd >= 0)) {
       vc->addLogMessage("accepting the connection");
 
-      NetDebug("epoll", "accepted a new socket: %d", fd);
+      NetDebug("iocore_net", "accepted a new socket: %d", fd);
       if (send_bufsize > 0) {
         if (unlikely(socketManager.set_sndbuf_size(fd, send_bufsize))) {
           bufsz = ROUNDUP(send_bufsize, 1024);
@@ -483,7 +483,7 @@ NetAccept::acceptFastEvent(int event, void *ep)
     SET_CONTINUATION_HANDLER(vc, (NetVConnHandler) & UnixNetVConnection::mainEvent);
 
     if (vc->ep.start(pd, vc, EVENTIO_READ|EVENTIO_WRITE) < 0) {
-      NetDebug("iocore_net", "acceptFastEvent : Error in inserting fd[%d] in kevent\n", vc->con.fd);
+      Warning("[NetAccept::acceptFastEvent]: Error in inserting fd[%d] in kevent\n", vc->con.fd);
       close_UnixNetVConnection(vc, e->ethread);
       return EVENT_DONE;
     }

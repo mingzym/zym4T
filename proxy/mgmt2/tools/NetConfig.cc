@@ -1805,7 +1805,7 @@ main(int argc, char **argv)
 
 #endif
 
-#if (HOST_OS == sunos)
+#if (HOST_OS == solaris)
 
 #include <ctype.h>
 #include <stdlib.h>
@@ -1841,6 +1841,7 @@ struct ifafilt;
 #include<sys/types.h>
 
 #include "ink_bool.h"
+#include "ink_string.h"
 
 #define UP_INTERFACE     0
 #define DOWN_INTERFACE   1
@@ -1950,7 +1951,11 @@ overwriteFiles(char *source, char *dest, char *api_name)
   } else {
     int res;
     //printf("!! overwriteFiles mv %s %s\n", source, dest);
+#if (HOST_OS == solaris)
+    res = execl(MV_BINARY, "mv", source, dest, (char*)0);
+#else
     res = execl(MV_BINARY, "mv", source, dest, NULL);
+#endif
     if (res != 0)
       perror(errmsg);
     _exit(res);
@@ -1972,7 +1977,11 @@ createSymbolicLink(char *original_file, char *symbolic_link)
     waitpid(pid, &status, 0);
   } else {
     int res;
+#if (HOST_OS == solaris)
+    res = execl(SYMBOLIC_LINK_BINARY, "ln", "-s", original_file, symbolic_link, (char*)0);
+#else
     res = execl(SYMBOLIC_LINK_BINARY, "ln", "-s", original_file, symbolic_link, NULL);
+#endif
     if (res != 0)
       perror(errmsg);
     _exit(res);
@@ -1996,7 +2005,11 @@ changeFilePermission(char *mode, char *filename)
     waitpid(pid, &status, 0);
   } else {
     int res;
+#if (HOST_OS == solaris)
+    res = execl(CHMOD_BINARY, "chmod", mode, filename, (char*)0);
+#else
     res = execl(CHMOD_BINARY, "chmod", mode, filename, NULL);
+#endif
     if (res != 0)
       perror(errmsg);
     _exit(res);
@@ -2021,7 +2034,11 @@ delRoute(char *dest, char *gateway, char *api_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
+#if (HOST_OS == solaris)
+    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, (char*)0);
+#else
     res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, NULL);
+#endif
     if (res != 0) {
       perror(errmsg);
     }
@@ -2047,7 +2064,11 @@ delRoute(char *dest, char *gateway, char *interface, char *api_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
+#if (HOST_OS == solaris)
+    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, "-ifp", interface, (char*)0);
+#else
     res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, "-ifp", interface, NULL);
+#endif
     if (res != 0) {
       perror(errmsg);
     }
@@ -2070,7 +2091,11 @@ addRoute(char *dest, char *gateway, char *api_name)
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
+#if (HOST_OS == solaris)
+    int res = execl(ROUTE_BINARY, "route", "add", dest, gateway, (char*)0);
+#else
     int res = execl(ROUTE_BINARY, "route", "add", dest, gateway, NULL);
+#endif
     if (res != 0) {
       perror(errmsg);
     }
@@ -2096,7 +2121,11 @@ addRoute(char *dest, char *gateway, char *interface, char *api_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
+#if (HOST_OS == solaris)
+    res = execl(ROUTE_BINARY, "route", "add", dest, gateway, "-ifp", interface, (char*)0);
+#else
     res = execl(ROUTE_BINARY, "route", "add", dest, gateway, "-ifp", interface, NULL);
+#endif
     if (res != 0) {
       perror(errmsg);
     }
@@ -2122,7 +2151,11 @@ setIpAndMask(char *ip, char *mask, char *interface, char *api_name)
     waitpid(pid, &status, 0);
   } else {                      // also update the broadcast address field
     int res;
+#if (HOST_OS == solaris)
+    res = execl(IF_CONFIG_BINARY, "ifconfig", interface, ip, "netmask", mask, "broadcast", "+", (char*)0);
+#else
     res = execl(IF_CONFIG_BINARY, "ifconfig", interface, ip, "netmask", mask, "broadcast", "+", NULL);
+#endif
     if (res != 0) {
       perror(errmsg);
     }
@@ -2171,7 +2204,7 @@ setIpForBoot(char *nic_name, char *new_ip, char *old_ip)
 {
   const int BUFFLEN = 1024;
   const int PATHLEN = 200;
-  char command[PATHLEN], buffer[BUFFLEN], hostname_path[PATHLEN];
+  char buffer[BUFFLEN], hostname_path[PATHLEN];
   char hosts_path[PATHLEN], hosts_path_new[PATHLEN];
   char hostname[PATHLEN];
   FILE *fd, *fd1;
@@ -2314,7 +2347,7 @@ ipInt2Dot(int ip, char *ipAddr, const int ipAddrSize)
 
   //need 3 + 1 + 3 + 1+ 3 + 1 + 3 = 15 chars, +1 for the null
   char buff[17];
-  snprintf(buff, sizeof(buf), "%d.%d.%d.%d",
+  snprintf(buff, sizeof(buff), "%d.%d.%d.%d",
            (ip & FIRST_OCTET) >> 24, (ip & SECOND_OCTET) >> 16, (ip & THIRD_OCTET) >> 8, (ip & FOURTH_OCTET));
   ink_strncpy(ipAddr, buff, ipAddrSize);
   return NETCONFIG_SUCCESS;
@@ -2328,7 +2361,7 @@ int
 getNetworkNumber(char *ip, char *netmask, char *network_number)
 {
   unsigned int network = (ipDot2int(ip) & ipDot2int(netmask));
-  return ipInt2Dot(network, network_number);
+  return ipInt2Dot(network, network_number, sizeof(network_number));
 }
 
 int
@@ -2370,7 +2403,7 @@ setGatewayForBoot(char *nic_name, char *gateway)
        modify - find line of adding route to specific nic_name
        replace that line
      */
-    snprintf(static_filename_new, sizeof(stat_filename_new), "%s.new", static_filename);
+    snprintf(static_filename_new, sizeof(static_filename_new), "%s.new", static_filename);
     if ((fd1 = fopen(static_filename_new, "w")) == NULL) {
       perror("[net_config] setGatewayForBoot, failed to open new config files");
       return NETCONFIG_FAIL;
@@ -2539,7 +2572,7 @@ bringUpInterface(char *nic_name, char *ip, char *default_gateway)
     } else if (pid > 0) {
       waitpid(pid, &status, 0);
     } else {
-      int res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "up", NULL);
+      int res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "up", (char*)0);
       if (res != 0)
         perror(errmsg);
       _exit(res);
@@ -2553,7 +2586,7 @@ bringUpInterface(char *nic_name, char *ip, char *default_gateway)
       waitpid(pid, &status, 0);
     } else {
       int res;
-      res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "plumb", NULL);
+      res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "plumb", (char*)0);
       if (res != 0)
         perror(errmsg);
       _exit(res);
@@ -2582,7 +2615,7 @@ bringUpInterface(char *nic_name, char *ip, char *default_gateway)
         waitpid(pid, &status, 0);
       } else {
         int res;
-        res = execl(STATIC_ROUTE_FILENAME, NULL);
+        res = execl(STATIC_ROUTE_FILENAME, NULL, (char*)0);
         if (res != 0)
           perror(errmsg);
         _exit(res);
@@ -2630,7 +2663,7 @@ dropDHCP(char *nic_name)
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(IFCONFIG, "ifconfig", nic_name, "auto-dhcp", "drop", NULL);
+    int res = execl(IFCONFIG, "ifconfig", nic_name, "auto-dhcp", "drop", (char*)0);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2785,7 +2818,7 @@ down_interface(char *nic_name)
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", NULL);
+    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", (char*)0);
     if (res != 0) {
       perror("[net_confg] couldn't bring interface down");
     }
@@ -2857,7 +2890,7 @@ mrtg_hostname_change(char *hostname, char *old_hostname)
         waitpid(pid, &status, 0);
       } else {
         // printf("MV: %s %s %s \n",mv_binary,mrtg_path_new, mrtg_path); 
-        res = execl(mv_binary, "mv", mrtg_path_new, mrtg_path, NULL);
+        res = execl(mv_binary, "mv", mrtg_path_new, mrtg_path, (char*)0);
         if (res != 0) {
           perror("[net_config] mv of new mrtg file failed ");
         }
@@ -3002,7 +3035,7 @@ set_gateway(char *ip_address, char *old_ip_address)
   char buffer[BUFFLEN];
   char default_router_path[PATHLEN], default_router_path_new[PATHLEN];
   char cur_gateway_addr[BUFFLEN];
-  FILE *fd, *fd1;
+  FILE *fd;
 
   /* first overwrite the default router file */
   snprintf(default_router_path, sizeof(default_router_path), "%s", DEFAULT_ROUTER_PATH);
@@ -3106,7 +3139,7 @@ set_dns_server(char *dns_server_ips)
     waitpid(pid, &status, 0);
   } else {
     int res;
-    res = execl(mv_binary, "mv", dns_path_new, dns_path, NULL);
+    res = execl(mv_binary, "mv", dns_path_new, dns_path, (char*)0);
     if (res != 0) {
       perror("[net_config] mv of new dns config file failed ");
     }
@@ -3164,7 +3197,7 @@ set_domain_name(char *domain_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-    res = execl(mv_binary, "mv", domain_path_new, domain_path, NULL);
+    res = execl(mv_binary, "mv", domain_path_new, domain_path, (char*)0);
     if (res != 0) {
       perror("[net_config] mv of new domain config file failed ");
     }
@@ -3220,7 +3253,7 @@ set_search_domain(char *search_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-    res = execl(mv_binary, "mv", search_domain_path_new, search_domain_path, NULL);
+    res = execl(mv_binary, "mv", search_domain_path_new, search_domain_path, (char*)0);
     if (res != 0) {
       perror("[net_config] mv of new  search domain config file failed ");
     }

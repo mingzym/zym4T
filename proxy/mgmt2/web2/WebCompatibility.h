@@ -61,7 +61,7 @@ typedef int WebHandle;
 //                                  struct hostent *result, char *buffer, int buflen, int *h_errnop);
 #endif
 
-#if (HOST_OS == sunos)
+#if (HOST_OS == solaris)
 extern "C"
 {
   struct hostent *gethostbyaddr_r(const char *addr,

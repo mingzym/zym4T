@@ -429,7 +429,7 @@ Store::write_config_data(int fd)
 
 
 
-#if (HOST_OS == freebsd) || (HOST_OS == darwin)
+#if (HOST_OS == freebsd) || (HOST_OS == darwin) || (HOST_OS == solaris)
 #include <ctype.h>
 #include <sys/types.h>
 #include <sys/param.h>
@@ -439,6 +439,9 @@ Store::write_config_data(int fd)
 //#include <sys/diskslice.h>
 #elif (HOST_OS == darwin)
 #include <sys/disk.h>
+#include <sys/statvfs.h>
+#elif (HOST_OS == solaris)
+#include <sys/statfs.h>
 #include <sys/statvfs.h>
 #endif
 #include <string.h>
@@ -491,12 +494,21 @@ Span::init(char *an, ink64 size)
     return "unable to open";
   }
 
+#if (HOST_OS == solaris)
+  struct statvfs fs;
+  if ((ret = fstatvfs(fd, &fs)) < 0) {
+    Warning("unable to statvfs '%s': %d %d, %s", n, ret, errno, strerror(errno));
+    socketManager.close(fd);
+    return "unable to statvfs";
+  }
+#else
   struct statfs fs;
   if ((ret = fstatfs(fd, &fs)) < 0) {
     Warning("unable to statfs '%s': %d %d, %s", n, ret, errno, strerror(errno));
     socketManager.close(fd);
     return "unable to statfs";
   }
+#endif
 
   disk_block_size = fs.f_bsize;
   ink64 fsize = (ink64) fs.f_blocks * (ink64) fs.f_bsize;
@@ -505,7 +517,7 @@ Span::init(char *an, ink64 size)
 
   case S_IFBLK:{
   case S_IFCHR:
-#ifdef HAVE_RAW_DISK_SUPPORT // FIXME:
+#ifdef HAVE_RAW_DISK_SUPPORT // FIXME: darwin, freebsd, solaris
       struct disklabel dl;
       struct diskslices ds;
       if (ioctl(fd, DIOCGDINFO, &dl) < 0) {

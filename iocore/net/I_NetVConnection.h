@@ -428,6 +428,7 @@ public:
   {
     if (logging != NULL) {
       logging->add(message);
+      logging->print();
     }
   }
   void printLogs() const

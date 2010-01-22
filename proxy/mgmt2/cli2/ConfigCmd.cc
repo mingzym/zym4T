@@ -5139,6 +5139,15 @@ getnameserver(char *nameserver, int len)
 
 }
 
+#if (HOST_OS == solaris)
+/*
+ * NOTE: This routine is found in libnsl (-lnsl). No prototype was found in
+ * any of the header files in /usr/include. Define a prototype here to keep the 
+ * compiler happy.
+ */
+extern int getdomainname(char *, int);
+#endif
+
 int
 setnameserver(char *nameserver)
 {
@@ -5146,18 +5155,18 @@ setnameserver(char *nameserver)
   if ((fstr = fopen(NAMESERVER_PATH, "wb")) == NULL) {
     return -1;
   } else {
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd) //FIXME: solaris
     char domain[256];
     char resolventry[256];
 
-#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
     if (getdomainname(domain, 256) == -1)
       return CLI_ERROR;
     snprintf((char *) &resolventry, sizeof(resolventry), "domain %s\nnameserver %s\n", domain, nameserver);
-#endif
 
     fputs((char *) &resolventry, fstr);
     fputs("\n", fstr);
     fclose(fstr);
+#endif
     return CLI_OK;
   }
   return CLI_OK;
@@ -5181,7 +5190,7 @@ int
 getrouter(char *router, int len)
 {
   FILE *fstr;
-#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd) || (HOST_OS == solaris)
   char buff[256];
   char *p;
 
@@ -5232,6 +5241,8 @@ getnetparms(char *ipnum, char *mask)
 #define interface_name "en0"
 #elif (HOST_OS == freebsd)
 #define interface_name "eth0"
+#elif (HOST_OS == solaris)
+#define interface_name "e1000g0" // FIXME: better way to get interface names
 #endif
 
   FILE *ifconfig_data;
@@ -6327,7 +6338,7 @@ find_value(char *pathname, char *key, char *value, int value_len, char *delim, i
   int find = 0;
   int counter = 0;
 
-#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd)
+#if (HOST_OS == linux) || (HOST_OS == darwin) || (HOST_OS == freebsd) || (HOST_OS == solaris)
   ink_strncpy(value, "", value_len);
   // coverity[fs_check_call]
   if (access(pathname, R_OK)) {

@@ -77,7 +77,7 @@ initialize_thread_for_udp_net(EThread * thread)
 #if defined(USE_LIBEV)
   PollCont *pc = get_UDPPollCont(thread);
   PollDescriptor *pd = pc->pollDescriptor;
-  pd->eio = ev_loop_new(0);
+  pd->eio = ev_loop_new(LIBEV_BACKEND_LIST);
 #endif
   // These are hidden variables that control the amount of memory used by UDP
   // packets.  As usual, defaults are in RecordsConfig.cc

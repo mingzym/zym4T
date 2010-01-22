@@ -62,7 +62,7 @@ NetProcessor::accept(Continuation * cont,
   (void) accept_only;           // NT only
   (void) bound_sockaddr;        // NT only
   (void) bound_sockaddr_size;   // NT only
-  NetDebug("net_processor", "NetProcessor::accept - port %d,recv_bufsize %d, send_bufsize %d, sockopt 0x%0lX",
+  NetDebug("iocore_net_processor", "NetProcessor::accept - port %d,recv_bufsize %d, send_bufsize %d, sockopt 0x%0lX",
         port, recv_bufsize, send_bufsize, sockopt_flags);
   return ((UnixNetProcessor *) this)->accept_internal(cont, NO_FD, port,
                                                       bound_sockaddr,
@@ -81,7 +81,7 @@ NetProcessor::main_accept(Continuation * cont, SOCKET fd, int port,
                           EventType etype, bool callback_on_open)
 {
   (void) accept_only;           // NT only
-  NetDebug("net_processor", "NetProcessor::main_accept - port %d,recv_bufsize %d, send_bufsize %d, sockopt 0x%0lX",
+  NetDebug("iocore_net_processor", "NetProcessor::main_accept - port %d,recv_bufsize %d, send_bufsize %d, sockopt 0x%0lX",
         port, recv_bufsize, send_bufsize, sockopt_flags);
   return ((UnixNetProcessor *) this)->accept_internal(cont, fd, port,
                                                       bound_sockaddr,
@@ -346,7 +346,7 @@ struct CheckConnect:public Continuation
     switch (event) {
     case NET_EVENT_OPEN:
       vc = (UnixNetVConnection *) e;
-      NetDebug("connect", "connect Net open");
+      NetDebug("iocore_net_connect", "connect Net open");
       vc->do_io_write(this, 10, /* some non-zero number just to get the poll going */
                       reader);
       /* dont wait for more than timeout secs */
@@ -354,7 +354,8 @@ struct CheckConnect:public Continuation
       return EVENT_CONT;
       break;
 
-      case NET_EVENT_OPEN_FAILED:NetDebug("connect", "connect Net open failed");
+      case NET_EVENT_OPEN_FAILED:
+	NetDebug("iocore_net_connect", "connect Net open failed");
       if (!action_.cancelled)
         action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *) e);
       break;
@@ -367,7 +368,7 @@ struct CheckConnect:public Continuation
           ret = getsockopt(vc->con.fd, SOL_SOCKET, SO_ERROR, (char *) &sl, &sz);
         if (!ret && sl == 0)
         {
-          NetDebug("connect", "connection established");
+          NetDebug("iocore_net_connect", "connection established");
           /* disable write on vc */
           vc->write.enabled = 0;
           vc->cancel_inactivity_timeout();
@@ -388,7 +389,7 @@ struct CheckConnect:public Continuation
         action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *) -ENET_CONNECT_FAILED);
       break;
     case VC_EVENT_INACTIVITY_TIMEOUT:
-      NetDebug("connect", "connect timed out");
+      NetDebug("iocore_net_connect", "connect timed out");
       vc->do_io_close();
       if (!action_.cancelled)
         action_.continuation->handleEvent(NET_EVENT_OPEN_FAILED, (void *) -ENET_CONNECT_TIMEOUT);
@@ -437,7 +438,7 @@ Action *
 NetProcessor::connect_s(Continuation * cont, unsigned int ip,
                         int port, unsigned int _interface, int timeout, NetVCOptions * opt)
 {
-  NetDebug("connect", "NetProcessor::connect_s called");
+  NetDebug("iocore_net_connect", "NetProcessor::connect_s called");
   CheckConnect *c = NEW(new CheckConnect(cont->mutex));
   return c->connect_s(cont, ip, port, _interface, timeout, opt);
 }

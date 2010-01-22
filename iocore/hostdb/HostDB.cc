@@ -330,7 +330,7 @@ HostDBCache::start(int flags)
       szPath[i] = '\\';
     i++;
   }
-  strcpy(storage_path, system_root_dir);
+  ink_strncpy(storage_path, system_root_dir, PATH_NAME_MAX);
   strcat(storage_path, DIR_SEP);
   strcat(storage_path, szPath);
 #else

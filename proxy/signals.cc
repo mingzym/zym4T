@@ -297,8 +297,13 @@ signal_handler(int sig, siginfo_t * t, void *c)
   //
   if (t) {
     if (t->si_code <= 0) {
+#if (HOST_OS == solaris)
+      snprintf(sig_msg, sizeof(sig_msg), "NOTE: Traffic Server received User Sig %d from pid: %d uid: %d\n",
+               sig, (int)t->si_pid, t->si_uid);
+#else
       snprintf(sig_msg, sizeof(sig_msg), "NOTE: Traffic Server received User Sig %d from pid: %d uid: %d\n",
                sig, t->si_pid, t->si_uid);
+#endif
     } else {
       snprintf(sig_msg, sizeof(sig_msg), "NOTE: Traffic Server received Kernel Sig %d, Reason: %d\n", sig, t->si_code);
     }

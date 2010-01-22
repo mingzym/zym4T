@@ -101,7 +101,7 @@ extern "C"
 #define TO_PTR(_x) ((void*)(_x))
 #endif
 
-#if defined(__i386__)
+#if defined(__i386__) || defined(__i386)
 #define FREELIST_POINTER(_x) (_x).s.pointer
 #define FREELIST_VERSION(_x) (_x).s.version
 #define SET_FREELIST_POINTER_VERSION(_x,_p,_v) \

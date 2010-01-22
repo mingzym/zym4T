@@ -1114,7 +1114,11 @@ spawn_rpass()
     if (err == 0) {
       fd = fopen(rni_rpass_lockfile, "w+");
       if (fd > 0) {
+#if (HOST_OS == solaris)
+	fprintf(fd, "%d\n", (int)getpid());
+#else
         fprintf(fd, "%d\n", getpid());
+#endif
         fclose(fd);
       }
 

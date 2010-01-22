@@ -82,7 +82,7 @@ struct core_stack_state
 };
 #endif  // linux check
 
-#if (HOST_OS == darwin) || (HOST_OS == freebsd)
+#if (HOST_OS == darwin) || (HOST_OS == freebsd) || (HOST_OS == solaris) // FIXME: solaris x86
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -100,7 +100,7 @@ struct core_stack_state
   intptr_t pc;
   intptr_t arg[NO_OF_ARGS];
 };
-#endif  
+#endif  /* darwin || freebsd || solaris */
 
 // to be sorted by virtual address
 struct memTable
@@ -187,6 +187,7 @@ public:
   * inputs: none
   * outputs: returns the active lwp id
   **********************************************************************/
+
 #if defined(sparc)
   static intptr_t get_active_thread_Id();
 #endif
@@ -199,6 +200,7 @@ public:
 #if (HOST_OS == linux)
   static void get_base_frame(intptr_t framep, core_stack_state * coress);
 #endif
+
 #if defined(sparc)
   static void get_base_frame(intptr_t threadId, core_stack_state * coress);
 #endif

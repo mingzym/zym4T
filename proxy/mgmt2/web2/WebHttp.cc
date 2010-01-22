@@ -3932,7 +3932,7 @@ handle_submit_net_config(WebHttpContext * whc, const char *file)
 //  if (recs_out_of_date)
 //    goto Lout_of_date;
 
-#if (HOST_OS == linux) || (HOST_OS == sunos)
+#if (HOST_OS == linux) || (HOST_OS == solaris)
 
   InkHashTableIteratorState htis;
   InkHashTableEntry *hte;

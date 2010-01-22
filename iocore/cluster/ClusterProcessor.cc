@@ -365,8 +365,8 @@ bool ClusterProcessor::disable_remote_cluster_ops(ClusterMachine * m)
 ////////////////////////////////////////////////////////////////////////////
 // Simplify debug access to stats
 ////////////////////////////////////////////////////////////////////////////
-#define GS RecRawStat
 #if 0
+#define GS RecRawStat// FIXME: GS conflicts with define in /usr/include/sys/regset.h
 GS *p_CLUSTER_CONNECTIONS_OPEN_STAT = RecGetGlobalRawStatPtr(cluster_rsb, CLUSTER_CONNECTIONS_OPEN_STAT);
 GS *p_CLUSTER_CONNECTIONS_OPENNED_STAT = RecGetGlobalRawStatPtr(cluster_rsb, CLUSTER_CONNECTIONS_OPENNED_STAT);
 GS *p_CLUSTER_CON_TOTAL_TIME_STAT = RecGetGlobalRawStatPtr(cluster_rsb, CLUSTER_CON_TOTAL_TIME_STAT);

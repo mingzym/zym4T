@@ -36,16 +36,22 @@ case $host_os in
   freebsd*)
     AC_DEFINE_UNQUOTED([HOST_OS],[freebsd])
     AC_DEFINE_UNQUOTED([freebsd],[1])
-    LDFLAGS="${LDFLAGS} -L/usr/local/lib"
     ;;
-  *)         AC_DEFINE_UNQUOTED([HOST_OS],[unknown]) ;;
+  solaris*)
+    AC_DEFINE_UNQUOTED([HOST_OS],[solaris])
+    AC_DEFINE_UNQUOTED([solaris],[1])
+    ;;
+  *)         
+    AC_DEFINE_UNQUOTED([HOST_OS],[unknown]) 
+    ;;
 esac
 
 #
 # Build environment
 #
 
-build_person="`whoami`"
+build_person="`id -nu`"
+build_group="`id -ng`"
 build_machine="`uname -n`"
 AC_DEFINE_UNQUOTED(BUILD_PERSON, "$build_person")
 AC_DEFINE_UNQUOTED(BUILD_MACHINE, "$build_machine")
@@ -64,7 +70,7 @@ AC_ARG_WITH([group],
   [
   with_group="$withval"
   ],[
-  with_group="$with_user"
+  with_group="$build_group"
   ]
 )
 AC_SUBST([pkgsysuser],[$with_user])
@@ -257,7 +263,19 @@ AC_ARG_WITH([architecture],
 )
 AS_IF([test "x$with_architecture" = "xyes"], [echo "--with-architecture needs an argument"; AS_EXIT()]
 )
-          
+
+# Berkeley DB (bdb)
+AC_ARG_WITH([bdb],
+   [AC_HELP_STRING([--with-bdb=DIR],[Berkeley DB installation directory])],
+   [with_bdb=$withval],
+   [with_bdb=no]   
+)
+
+if test "x$with_bdb" != "xno" ; then
+   PATH_BDB_INC="$with_bdb/include"
+   PATH_BDB_LIB="$with_bdb/lib"
+fi
+
 #
 # Installation directories
 #
@@ -289,41 +307,30 @@ AC_SUBST([pkglibexecdir],["$libexecdir/$PACKAGE_TARNAME"])
 # 4) (in first kludge mode block...) obtain any further CFLAG-type additions.
 # 5) Test compilers with all flags set.
 
-# These are shortcuts used in combination for the compiler options below
-common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
-debug_opt="-ggdb3 $common_opt"
-release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
-cxx_opt="-Wno-invalid-offsetof"
-
-cc_oflag_opt=$release_opt
-cc_oflag_dbg=$debug_opt
-cxx_oflag_opt="$release_opt $cxx_opt"
-cxx_oflag_dbg="$debug_opt $cxx_opt"
-
-CC=gcc
-CXX=g++
-
-SHARED_CFLAGS=-fPIC
-SHARED_LDFLAGS=-shared
-SHARED_CXXFLAGS=-fPIC
-SHARED_CXXLINKFLAGS=-shared
-
 # AC_PROG can sometimes mangle CFLAGS etc.
 # in particular, on Linux they insert -g -O2, here we preserve any user CFLAGS
+
+#CC=gcc
+#CXX=g++
 
 REAL_CFLAGS="${CFLAGS}"
 REAL_CXXFLAGS="${CXXFLAGS}"
 REAL_CCASFLAGS="${CCASFLAGS}"
 
+AC_CHECK_PROG([CCACHE],[ccache],[ccache],[])
+AC_PROG_CC
+AC_PROG_CXX
+if test "x${CCACHE}" = "xccache" ;then
+ CC="$CCACHE $CC"
+ CXX="$CCACHE $CXX"
+fi
+AC_PROG_CPP
+AC_PROG_CXXCPP
 AM_PROG_AS
 AC_PROG_AWK
 AC_PROG_LN_S
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
-
-CFLAGS="${REAL_CFLAGS}"
-CXXFLAGS="${REAL_CXXFLAGS}"
-CCASFLAGS="${REAL_CCASFLAGS}"
 
 AC_PATH_PROG([DOXYGEN], [doxygen]) # needed for Doxygen
 AC_PATH_PROG([PERL],[perl],[not found])
@@ -333,7 +340,64 @@ AS_IF([test "x$PERL" = "xnot found"],
 AC_ARG_VAR([DOXYGEN], [full path of Doxygen executable])
 AC_ARG_VAR([PERL], [full path of Perl executable])
 
-AC_CHECK_PROG([CCACHE],[ccache],[ccache],[])
+CFLAGS="${REAL_CFLAGS}"
+CXXFLAGS="${REAL_CXXFLAGS}"
+CCASFLAGS="${REAL_CCASFLAGS}"
+
+base_cc=`basename $CC`
+# These are shortcuts used in combination for the compiler options below
+case $host_os in
+  linux*)
+    common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
+    debug_opt="-ggdb3 $common_opt"
+    release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
+    cxx_opt="-Wno-invalid-offsetof"
+    ;;
+  darwin*)
+    common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
+    debug_opt="-ggdb3 $common_opt"
+    release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
+    cxx_opt="-Wno-invalid-offsetof"
+    ;;
+  freebsd*)
+    common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
+    debug_opt="-ggdb3 $common_opt"
+    release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
+    cxx_opt="-Wno-invalid-offsetof"
+    LDFLAGS="${LDFLAGS} -L/usr/local/lib"
+    ;;
+  solaris*)
+    if test "x${base_cc}" = "xcc" ;then
+      common_opt="-mt -m32 -D__WORDSIZE=32" # FIXME: This should be detected
+      debug_opt="-g $common_opt"
+      release_opt="-g $common_opt -xO3"
+      cxx_opt="-library=stlport4 -erroff"    
+    else # gcc
+      common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
+      debug_opt="-ggdb3 $common_opt"
+      release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
+      cxx_opt="-Wno-invalid-offsetof"
+    fi
+    LDFLAGS="${LDFLAGS} -L/lib -L/usr/local/lib"
+    ;;
+  *)         
+    common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
+    debug_opt="-ggdb3 $common_opt"
+    release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
+    cxx_opt="-Wno-invalid-offsetof"
+    ;;
+esac
+
+cc_oflag_opt=$release_opt
+cc_oflag_dbg=$debug_opt
+cxx_oflag_opt="$release_opt $cxx_opt"
+cxx_oflag_dbg="$debug_opt $cxx_opt"
+
+SHARED_CFLAGS=-fPIC
+SHARED_LDFLAGS=-shared
+SHARED_CXXFLAGS=-fPIC
+SHARED_CXXLINKFLAGS=-shared
+
 
 #
 # Here are all the extra linux-specific C(XX)FLAGS additions and
@@ -350,18 +414,21 @@ AS_IF([test "x$with_architecture" != "xno"],
 AC_CHECK_SIZEOF(int *) # test for 64-bit pointers, this permits CFLAGS=-m32 for 32-bit compiles on 64-bit systems
 
 # add a default march if there is not one set
-if test "${ac_cv_sizeof_int_p}" = "4"; then
-    case $CFLAGS in
-  *\-march=*) : ;;
-  *) CFLAGS="$CFLAGS -march=i586" ;;
-esac
+if test "x${GCC}" = "xyes"; then
+ if test "${ac_cv_sizeof_int_p}" = "4"; then
+  case $CFLAGS in
+    *\-march=*) : ;;
+    *) CFLAGS="$CFLAGS -march=i586" ;;
+  esac
 
-    case $CXXFLAGS in
-  *\-march=*) : ;;
-  *) CXXFLAGS="$CXXFLAGS -march=i586" ;;
-esac
+  case $CXXFLAGS in
+    *\-march=*) : ;;
+    *) CXXFLAGS="$CXXFLAGS -march=i586" ;;
+  esac
+ fi
 fi
 
+# GCC atomics
 AC_CACHE_CHECK([for gcc atomic builtins],[support_cv_atomic],
 [AC_LINK_IFELSE([AC_LANG_PROGRAM([],[[
 int i, x =0;
@@ -388,6 +455,8 @@ case $host_os in
     ;;
   darwin*)
     ;;
+  solaris*)
+    ;;	
   *)         
     EXTRA_CXX_LDFLAGS="-rdynamic"
    ;;
@@ -412,13 +481,6 @@ fi
     # Note:  This macro may set certain parameters when run.
     #
 
-AC_PROG_CC
-AC_PROG_CXX
-CC="$CCACHE $CC"
-CXX="$CCACHE $CXX"
-
-AC_PROG_CPP
-AC_PROG_CXXCPP
 
 # -----------------------------------------------------------------------------
 # 4. CHECK FOR LIBRARIES
@@ -445,7 +507,7 @@ AC_CHECK_LIB([ssl],[SSL_CTX_new],
    AC_DEFINE([HAVE_LIBSSL],[1],[Define if you have libssl])
   ],
   [AC_MSG_FAILURE([check for libssl failed. Have you installed openssl-devel?])],
-  [-lcrypto -lgcc]
+  [-lcrypto]
 )
 
 #
@@ -461,7 +523,7 @@ SC_LOAD_TCLCONFIG
 # expect tclConfig.sh to populate TCL_LIB_FLAG and TCL_INCLUDE_SPEC
 case $host_os in
   darwin*)
-    TCL_LIB_FLAG="-ltcl"
+    TCL_LIB_FLAG="-ltcl" # OSX fails to populate this variable
     ;;
   *)         
    ;;
@@ -470,6 +532,9 @@ AC_SUBST([LIBTCL],[$TCL_LIB_FLAG])
 
 case $host_os in
   freebsd*)
+    CPPFLAGS="$CPPFLAGS -I/usr/local/include $TCL_INCLUDE_SPEC"
+    ;;
+  solaris*)
     CPPFLAGS="$CPPFLAGS -I/usr/local/include $TCL_INCLUDE_SPEC"
     ;;
   *)         
@@ -483,12 +548,48 @@ AC_CHECK_LIB([expat],[XML_SetUserData],
   [$LIBTHREAD]
 )
 
+# Berkeley DB check: 
+# TODO: Better checking for versions/directories similar to TCL
 ts_have_db=0
+save_LDFLAGS="$LDFLAGS"
+save_CPPFLAGS="$CPPFLAGS"
+if test "x$with_bdb" != "xno" ; then
+  case $host_os in
+    solaris*)
+      LDFLAGS="$LDFLAGS -L$PATH_BDB_LIB -R$PATH_BDB_LIB" 
+      CPPFLAGS="$CPPFLAGS -I$PATH_BDB_INC"
+      ;;
+    *)         
+      LDFLAGS="$LDFLAGS -L$PATH_BDB_LIB" 
+      CPPFLAGS="$CPPFLAGS -I$PATH_BDB_INC"
+      ;;
+  esac
+fi
+
+AC_CHECK_LIB([db],[__db_open],
+  [LIBDB="-ldb"
+
+   ts_have_db=1
+  ],
+   [AC_MSG_WARN([check for libdb failed. Have you installed Berkeley DB e.g. BerkeleyDB.4.7?])
+   LDFLAGS="$save_LDFLAGS"
+   CPPFLAGS="$save_CPPFLAGS"
+  ]
+)
+
+
 AC_CHECK_LIB([db],[__db185_open],
   [LIBDB="-ldb"
    ts_have_db=1
   ],
    [AC_MSG_WARN([check for libdb failed. Have you installed db4-devel?])]
+)
+
+AC_CHECK_LIB([db],[__db_open],
+  [LIBDB="-ldb"
+   ts_have_db=1
+  ],
+   [AC_MSG_WARN([check for libdb failed. Have you installed Berkeley DB devel pkg?])]
 )
 
 AC_CHECK_LIB([c],[dbopen],
@@ -498,10 +599,10 @@ AC_CHECK_LIB([c],[dbopen],
 AC_SUBST([LIBDB])
  
 if test "$ts_have_db" = "0"; then
-    AC_MSG_FAILURE([No DB interface found])
+    AC_MSG_FAILURE([No DB interface found, try specifying --with-bdb=<Berkeley DB DIR>])
 fi
 
-AC_CHECK_FUNCS([clock_gettime kqueue epoll_ctl posix_memalign lrand48_r srand48_r eventfd])
+AC_CHECK_FUNCS([clock_gettime kqueue epoll_ctl posix_memalign lrand48_r srand48_r eventfd port_create])
 
 if test "x$enable_libev" = "xyes"; then
    AC_DEFINE([USE_LIBEV])
@@ -509,9 +610,15 @@ if test "x$enable_libev" = "xyes"; then
 elif test "$ac_cv_func_epoll_ctl" = "yes"; then
    AC_DEFINE([USE_EPOLL])
    have_good_poller=1
+   AC_MSG_NOTICE([Using epoll event interface])
 elif test "$ac_cv_func_kqueue" = "yes"; then
    AC_DEFINE([USE_KQUEUE])
    have_good_poller=1
+   AC_MSG_NOTICE([Using kqueue event interface])
+elif test "$ac_cv_func_port_create" = "yes"; then
+   AC_DEFINE([USE_PORT])
+   have_good_poller=1
+   AC_MSG_NOTICE([Using port event interface])
 else
    AC_MSG_FAILURE([No suitable polling interface found])
 fi
@@ -551,6 +658,18 @@ if test "$have_union_semun" = "0"; then
   AC_DEFINE([NEED_UNION_SEMUN])
 fi
 
+
+AC_MSG_NOTICE([Build using CC=$CC])
+AC_MSG_NOTICE([Build using CXX=$CXX])
+AC_MSG_NOTICE([Build using CPP=$CPP])
+AC_MSG_NOTICE([Build using CCAS=$CCAS])
+AC_MSG_NOTICE([Build using CFLAGS=$CFLAGS])
+AC_MSG_NOTICE([Build using CXXFLAGS=$CXXFLAGS])
+AC_MSG_NOTICE([Build using CPPFLAGS=$CPPFLAGS])
+AC_MSG_NOTICE([Build using CCASFLAGS=$CCASFLAGS])
+AC_MSG_NOTICE([Build using LDFLAGS=$LDFLAGS])
+AC_MSG_NOTICE([Build using EXTRA_CC_LDFLAGS=$EXTRA_CC_LDFLAGS])
+AC_MSG_NOTICE([Build using EXTRA_CXX_LDFLAGS=$EXTRA_CXX_LDFLAGS])
 
 # -----------------------------------------------------------------------------
 # 5. CHECK FOR HEADER FILES

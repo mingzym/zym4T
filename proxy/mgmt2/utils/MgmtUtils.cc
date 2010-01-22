@@ -580,7 +580,7 @@ get_interface_mtu(int sock_fd, struct ifreq *ifr)
     mgmt_log(stderr, "[getAddrForIntr] Unable to obtain MTU for " "interface '%s'", ifr->ifr_name);
     return 0;
   } else
-#if (HOST_OS == sunos) || (HOST_OS == hpux)
+#if (HOST_OS == solaris) || (HOST_OS == hpux)
     return ifr->ifr_metric;
 #else
     return ifr->ifr_mtu;
