@@ -170,9 +170,9 @@ void RegressionSM::run() {
         x = children[ichild];
       else {
         if (ichild != n-1)
-          x = children[0]->clone();
+          x = children[(intptr_t)0]->clone();
         else
-          x = children[0];
+          x = children[(intptr_t)0];
       }
       x->xrun(this);
       if (!par && nwaiting)
@@ -208,7 +208,7 @@ RegressionSM::RegressionSM(const RegressionSM &ao) {
   parent = &o;
   nwaiting = o.nwaiting;
   nchildren = o.nchildren;
-  for (int i = 0; i < nchildren; i++)
+  for (intptr_t i = 0; i < nchildren; i++)
     children(i) = o.children[i]->clone();
   n = o.n;
   ichild = o.ichild;

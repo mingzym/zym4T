@@ -55,7 +55,7 @@ struct RegressionSM : Continuation {
   int nwaiting;
   int nchildren;
   DynArray<RegressionSM*> children;
-  int n, ichild;
+  intptr_t n, ichild;
   bool par, rep;
   Action *pending_action;
 
