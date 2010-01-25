@@ -172,8 +172,8 @@ net_signal_hook_callback(EThread *thread) {
   inku64 counter;
   NOWARN_UNUSED_RETURN(read(thread->evfd, &counter, sizeof(inku64)));
 #else
-  char dummy;
-  NOWARN_UNUSED_RETURN(read(thread->evpipe[0], &dummy, 1));
+  char dummy[1024];
+  NOWARN_UNUSED_RETURN(read(thread->evpipe[0], &dummy, 1024));
 #endif  
 }
 
