@@ -125,7 +125,7 @@ char *ts_base_dir = ".";
 char *recs_conf = "records.config";
 
 typedef void (*PFV) (int);
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
 void SignalHandler(int sig, siginfo_t * t, void *f);
 void SignalAlrmHandler(int sig, siginfo_t * t, void *f);
 #else
@@ -208,7 +208,7 @@ initSignalHandlers()
   sigset_t sigsToBlock;
 
   // Set up the signal handler
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   sigHandler.sa_handler = NULL;
   sigHandler.sa_sigaction = SignalHandler;
 #else
@@ -228,7 +228,7 @@ initSignalHandlers()
   // Don't block the signal on entry to the signal
   //   handler so we can reissue it and get a core
   //   file in the appropriate circumstances
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   sigHandler.sa_flags = SA_RESETHAND | SA_SIGINFO;
 #else
   sigHandler.sa_flags = SA_RESETHAND;
@@ -240,7 +240,7 @@ initSignalHandlers()
   sigaction(SIGSEGV, &sigHandler, NULL);
   sigaction(SIGTERM, &sigHandler, NULL);
 
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   sigAlrmHandler.sa_handler = NULL;
   sigAlrmHandler.sa_sigaction = SignalAlrmHandler;
 #else
@@ -248,7 +248,7 @@ initSignalHandlers()
 #endif
 
   sigemptyset(&sigAlrmHandler.sa_mask);
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   sigAlrmHandler.sa_flags = SA_SIGINFO;
 #else
   sigAlrmHandler.sa_flags = 0;
@@ -1034,7 +1034,7 @@ main(int argc, char **argv)
 
 
 #ifndef _WIN32
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
 void
 SignalAlrmHandler(int sig, siginfo_t * t, void *c)
 #else
@@ -1046,7 +1046,7 @@ SignalAlrmHandler(int sig)
      fprintf(stderr,"[TrafficManager] ==> SIGALRM received\n");
      mgmt_elog(stderr,"[TrafficManager] ==> SIGALRM received\n");
    */
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   if (t) {
     if (t->si_code <= 0) {
 #if (HOST_OS == solaris)
@@ -1066,7 +1066,7 @@ SignalAlrmHandler(int sig)
 }
 
 
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
 void
 SignalHandler(int sig, siginfo_t * t, void *c)
 #else
@@ -1077,7 +1077,7 @@ SignalHandler(int sig)
   static int clean = 0;
   int status;
 
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   if (t) {
     if (t->si_code <= 0) {
 #if (HOST_OS == solaris)

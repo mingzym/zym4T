@@ -162,8 +162,11 @@ clientCLI::CliResult clientCLI::connectToLM(void)
   memset(&clientS, 0, sizeof(sockaddr_un));
   clientS.sun_family = AF_UNIX; // UNIX domain socket
   ink_strncpy(clientS.sun_path, sockPath, sizeof(clientS.sun_path));
+#if (HOST_OS == darwin)
+  sockaddrLen = sizeof(sockaddr_un);
+#else
   sockaddrLen = sizeof(clientS.sun_family) + strlen(clientS.sun_path);;
-
+#endif
   // make socket non-blocking
   if (safe_nonblocking(socketFD) < 0) {
     fprintf(stderr, "Unable to set non-blocking flags on socket : %s\n", strerror(errno));

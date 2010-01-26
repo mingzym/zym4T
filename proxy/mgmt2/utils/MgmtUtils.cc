@@ -662,7 +662,7 @@ mgmt_getAddrForIntr(char *intrName, struct in_addr * addr, int *mtu)
         }
       }
     }
-#if (HOST_OS == freebsd)
+#if (HOST_OS == freebsd) || (HOST_OS == darwin)
     ifr = (struct ifreq *) ((char *) &ifr->ifr_addr + ifr->ifr_addr.sa_len);
 #else
     ifr = (struct ifreq *) (((char *) ifr) + sizeof(*ifr));

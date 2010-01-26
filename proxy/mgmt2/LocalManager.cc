@@ -506,8 +506,11 @@ LocalManager::initMgmtProcessServer()
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sun_family = AF_UNIX;
   ink_strncpy(serv_addr.sun_path, fpath, sizeof(serv_addr.sun_path));
+#if (HOST_OS == darwin)
+  servlen = sizeof(struct sockaddr_un);
+#else
   servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
-
+#endif
   if (setsockopt(process_server_sockfd, SOL_SOCKET, SO_REUSEADDR, (char *) &one, sizeof(int)) < 0) {
     mgmt_fatal(stderr, "[LocalManager::initMgmtProcessServer] Unable to set socket options.\n");
   }
@@ -1147,7 +1150,7 @@ LocalManager::convert_filters()
           Debug("lm-filter", "[LocalManager::startProxy] " "%s execution completed\n", absolute_convert_binary);
         }
       } else {                  // invoke the converter script - no args
-#if (HOST_OS == freebsd) || (HOST_OS == solaris)
+#if (HOST_OS == freebsd) || (HOST_OS == solaris) || (HOST_OS == darwin)
         int res = execl(absolute_convert_binary, convert_bin, NULL, (char *)0);
 #else
         int res = execl(absolute_convert_binary, convert_bin, NULL, NULL);
@@ -1216,7 +1219,7 @@ LocalManager::startProxy()
       char env_prep_bin[1024];
 
       snprintf(env_prep_bin, sizeof(env_prep_bin), "%s/%s", bin_path, env_prep);
-#if (HOST_OS == freebsd) || (HOST_OS == solaris)
+#if (HOST_OS == freebsd) || (HOST_OS == solaris) || (HOST_OS == darwin)
       res = execl(env_prep_bin, env_prep, (char *)0);
 #else
       res = execl(env_prep_bin, env_prep, NULL);

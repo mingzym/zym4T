@@ -376,8 +376,11 @@ newUNIXsocket(char *fpath)
 
   serv_addr.sun_family = AF_UNIX;
   ink_strncpy(serv_addr.sun_path, fpath, sizeof(serv_addr.sun_path));
+#if (HOST_OS == darwin)
+  servlen = sizeof(struct sockaddr_un);
+#else
   servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
-
+#endif
   if (setsockopt(socketFD, SOL_SOCKET, SO_REUSEADDR, (char *) &one, sizeof(int)) < 0) {
     mgmt_log(stderr, "[newUNIXsocket] Unable to set socket options: %s\n", strerror(errno));
   }
@@ -531,7 +534,7 @@ serviceThrReaper(void *arg)
           // socket will give up
           shutdown(wGlobals.serviceThrArray[i].fd, 0);
 
-#if (HOST_OS != freebsd)
+#if (HOST_OS != freebsd) && (HOST_OS != darwin)
           ink_thread_cancel(wGlobals.serviceThrArray[i].threadId);
 #endif
 #if (HOST_OS == darwin)
@@ -638,7 +641,7 @@ webIntr_main(void *x)
   qnum++;
   snprintf(sname,NAME_MAX,"%s%d","WebInterfaceMutex",qnum);
   ink_sem_unlink(sname); // FIXME: remove, semaphore should be properly deleted after usage
-  wGlobals.serviceThrCount = ink_sem_open(sname, O_CREAT | O_EXCL, 0777, 0);
+  wGlobals.serviceThrCount = ink_sem_open(sname, O_CREAT | O_EXCL, 0777, MAX_SERVICE_THREADS);
 #else /* !darwin */
   ink_sem_init(&wGlobals.serviceThrCount, MAX_SERVICE_THREADS);
 #endif /* !darwin */

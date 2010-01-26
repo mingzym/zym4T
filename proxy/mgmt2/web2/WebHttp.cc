@@ -6614,7 +6614,7 @@ signal_handler_init()
 #if !defined(_WIN32)
   sigset_t sigsToBlock;
   // FreeBSD and Linux use SIGUSR1 internally in the threads library
-#if (HOST_OS != linux) && (HOST_OS != freebsd)
+#if (HOST_OS != linux) && (HOST_OS != freebsd) && (HOST_OS != darwin)
   // Set up the handler for SIGUSR1
   struct sigaction sigHandler;
   sigHandler.sa_handler = signal_handler_do_nothing;
