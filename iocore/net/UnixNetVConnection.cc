@@ -579,9 +579,6 @@ UnixNetVConnection::do_io_close(int alerrno /* = -1 */ )
 {
   addLogMessage("UnixNetVConnection::do_io_close");
 
-  EThread *t = read.vio.mutex ? read.vio.mutex->thread_holding : write.vio.mutex->thread_holding;
-  ink_debug_assert(t);
-
   disable_read(this);
   disable_write(this);
   read.vio.buffer.clear();
@@ -599,8 +596,11 @@ UnixNetVConnection::do_io_close(int alerrno /* = -1 */ )
   else
     closed = -1;
 
-  if (!recursion && nh->mutex->thread_holding == t)
-    close_UnixNetVConnection(this, t);
+  if (!recursion) {
+     EThread *t = this_ethread();
+     if (nh->mutex->thread_holding == t)
+       close_UnixNetVConnection(this, t);
+  }
 }
 
 void

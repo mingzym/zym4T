@@ -1116,7 +1116,7 @@ INKVConnInternal::handle_event(int event, void *edata)
 }
 
 VIO *
-INKVConnInternal::do_io_read(Continuation * c, int nbytes, MIOBuffer * buf)
+INKVConnInternal::do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf)
 {
   m_read_vio.buffer.writer_for(buf);
   m_read_vio.op = VIO::READ;
@@ -1134,7 +1134,7 @@ INKVConnInternal::do_io_read(Continuation * c, int nbytes, MIOBuffer * buf)
 }
 
 VIO *
-INKVConnInternal::do_io_write(Continuation * c, int nbytes, IOBufferReader * buf, bool owner)
+INKVConnInternal::do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner)
 {
   ink_assert(!owner);
   m_write_vio.buffer.reader_for(buf);

@@ -64,9 +64,9 @@ struct DiskVConnection:VConnection
   //                creation callback.
   // must NOT be called when another operation is active.
   //
-  virtual VIO *do_io(int op, Continuation * c = NULL, int nbytes = INT_MAX, MIOBuffer * buf = 0, int data = 0);
+  virtual VIO *do_io(int op, Continuation * c = NULL, ink64 nbytes = INK64_MAX, MIOBuffer * buf = 0, int data = 0);
 
-  virtual VIO *do_io_write(Continuation * c = NULL, int nbytes = INT_MAX, IOBufferReader * buf = 0, bool owner = false) {
+  virtual VIO *do_io_write(Continuation * c = NULL, ink64 nbytes = INK64_MAX, IOBufferReader * buf = 0, bool owner = false) {
     return NULL;
   }
   //

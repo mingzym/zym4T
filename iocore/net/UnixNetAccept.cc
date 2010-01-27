@@ -490,12 +490,12 @@ NetAccept::acceptFastEvent(int event, void *ep)
 
     vc->nh->open_list.enqueue(vc);
 
+#ifdef USE_EDGE_TRIGGER
     // Set the vc as triggered and place it in the read ready queue in case there is already data on the socket.
-    // The request will  timeout on the connection if the client has already sent data and it is on the socket
-    // ready to be read.  This can occur under heavy load.
     NetDebug("iocore_net", "acceptEvent : Setting triggered and adding to the read ready queue");
     vc->read.triggered = 1;
     vc->nh->read_ready_list.enqueue(vc);
+#endif
 
     if (!action_->cancelled)
       action_->continuation->handleEvent(NET_EVENT_ACCEPT, vc);

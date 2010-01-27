@@ -150,10 +150,6 @@ public:
 
   void get_local_sa();
 
-  VIO *do_io_read_now(Continuation * c, int nbytes, MIOBuffer * buf);
-  VIO *do_io_write_now(Continuation * c, int nbytes, IOBufferReader * buf, bool owner = false);
-  void reenable_re_now(VIO * vio);
-
   // these are not part of the pure virtual interface.  They were
   // added to reduce the amount of duplicate code in classes inherited
   // from NetVConnection (SSL).
