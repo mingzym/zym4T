@@ -52,6 +52,12 @@ class EvacuationBlock;
 #endif
 #endif
 
+#ifdef DEBUG
+#define DDebug Debug
+#else
+#define DDebug if (0) dummy_debug
+#endif
+
 #define AIO_SOFT_FAILURE                -100000
 // retry read from writer delay
 #define WRITER_RETRY_DELAY  HRTIME_MSECONDS(50)

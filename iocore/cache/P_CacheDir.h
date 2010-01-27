@@ -235,7 +235,7 @@ struct OpenDirEntry
 
   Link<OpenDirEntry> link;
 
-  int wait(CacheVC * c, int msec);
+  int wait(CacheVC *c, int msec);
 
   bool has_multiple_writers()
   {
@@ -248,10 +248,10 @@ struct OpenDir:Continuation
   Queue<CacheVC> delayed_readers;
   DLL<OpenDirEntry> bucket[OPEN_DIR_BUCKETS];
 
-  int open_write(CacheVC * c, int allow_if_writers, int max_writers);
-  int close_write(CacheVC * c);
-  OpenDirEntry *open_read(INK_MD5 * key);
-  int signal_readers(int event, Event * e);
+  int open_write(CacheVC *c, int allow_if_writers, int max_writers);
+  int close_write(CacheVC *c);
+  OpenDirEntry *open_read(INK_MD5 *key);
+  int signal_readers(int event, Event *e);
 
   OpenDir();
 };
@@ -264,7 +264,7 @@ struct CacheSync:Continuation
   int writepos;
   AIOCallbackInternal io;
   Event *trigger;
-  int mainEvent(int event, Event * e);
+  int mainEvent(int event, Event *e);
   void aio_write(int fd, char *b, int n, ink_off_t o);
 
   CacheSync():Continuation(new_ProxyMutex()), part(0), buf(0), buflen(0), writepos(0), trigger(0)
@@ -275,26 +275,26 @@ struct CacheSync:Continuation
 
 // Global Functions
 
-void part_init_dir(Part * d);
+void part_init_dir(Part *d);
 int dir_token_probe(CacheKey *, Part *, Dir *);
 int dir_probe(CacheKey *, Part *, Dir *, Dir **);
-int dir_insert(CacheKey * key, Part * d, Dir * to_part);
-int dir_overwrite(CacheKey * key, Part * d, Dir * to_part, Dir * overwrite, bool must_overwrite = true);
-int dir_delete(CacheKey * key, Part * d, Dir * del);
-int dir_lookaside_probe(CacheKey * key, Part * d, Dir * result, EvacuationBlock ** eblock);
-int dir_lookaside_insert(EvacuationBlock * b, Part * d, Dir * to);
-int dir_lookaside_fixup(CacheKey * key, Part * d);
-void dir_lookaside_cleanup(Part * d);
-void dir_lookaside_remove(CacheKey * key, Part * d);
-void dir_free_entry(Dir * e, int s, Part * d);
+int dir_insert(CacheKey *key, Part *d, Dir *to_part);
+int dir_overwrite(CacheKey *key, Part *d, Dir *to_part, Dir *overwrite, bool must_overwrite = true);
+int dir_delete(CacheKey *key, Part *d, Dir *del);
+int dir_lookaside_probe(CacheKey *key, Part *d, Dir *result, EvacuationBlock ** eblock);
+int dir_lookaside_insert(EvacuationBlock *b, Part *d, Dir *to);
+int dir_lookaside_fixup(CacheKey *key, Part *d);
+void dir_lookaside_cleanup(Part *d);
+void dir_lookaside_remove(CacheKey *key, Part *d);
+void dir_free_entry(Dir *e, int s, Part *d);
 void dir_sync_init();
-int check_dir(Part * d);
-void dir_clean_part(Part * d);
-void dir_clear_range(ink_off_t start, ink_off_t end, Part * d);
-int dir_segment_accounted(int s, Part * d, int offby = 0,
+int check_dir(Part *d);
+void dir_clean_part(Part *d);
+void dir_clear_range(ink_off_t start, ink_off_t end, Part *d);
+int dir_segment_accounted(int s, Part *d, int offby = 0,
                           int *free = 0, int *used = 0,
                           int *empty = 0, int *valid = 0, int *agg_valid = 0, int *avg_size = 0);
-inku64 dir_entries_used(Part * d);
+inku64 dir_entries_used(Part *d);
 void sync_cache_dir_on_shutdown();
 
 // Global Data
@@ -303,16 +303,16 @@ extern Dir empty_dir;
 
 // Inline Funtions
 
-#define dir_in_seg(_s, _i) ((Dir*)(((char*)(_s)) + (SIZEOF_DIR * (_i))))
+#define dir_in_seg(_s, _i) ((Dir*)(((char*)(_s)) + (SIZEOF_DIR *(_i))))
 
 inline bool
-dir_compare_tag(Dir * e, CacheKey * key)
+dir_compare_tag(Dir *e, CacheKey *key)
 {
   return (dir_tag(e) == DIR_MASK_TAG(key->word(2)));
 }
 
 inline Dir *
-dir_from_offset(int i, Dir * seg)
+dir_from_offset(int i, Dir *seg)
 {
 #if DIR_DEPTH < 5
   if (!i)
@@ -324,13 +324,13 @@ dir_from_offset(int i, Dir * seg)
 #endif
 }
 inline Dir *
-next_dir(Dir * d, Dir * seg)
+next_dir(Dir *d, Dir *seg)
 {
   int i = dir_next(d);
   return dir_from_offset(i, seg);
 }
 inline int
-dir_to_offset(Dir * d, Dir * seg)
+dir_to_offset(Dir *d, Dir *seg)
 {
 #if DIR_DEPTH < 5
   return (((char*)d) - ((char*)seg))/SIZEOF_DIR;
@@ -341,12 +341,12 @@ dir_to_offset(Dir * d, Dir * seg)
 #endif
 }
 inline Dir *
-dir_bucket(int b, Dir * seg)
+dir_bucket(int b, Dir *seg)
 {
   return dir_in_seg(seg, b * DIR_DEPTH);
 }
 inline Dir *
-dir_bucket_row(Dir * b, int i)
+dir_bucket_row(Dir *b, int i)
 {
   return dir_in_seg(b, i);
 }

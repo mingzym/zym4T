@@ -24,7 +24,7 @@
 
 #include "P_Cache.h"
 
-#define LOOP_CHECK_MODE
+// #define LOOP_CHECK_MODE 1
 #ifdef LOOP_CHECK_MODE
 #define DIR_LOOP_THRESHOLD	      1000
 #endif
@@ -287,8 +287,10 @@ dir_bucket_length(Dir *b, int s, Part *d)
   Dir *e = b;
   int i = 0;
   Dir *seg = dir_segment(s, d);
+#ifdef LOOP_CHECK_MODE
   if (dir_bucket_loop_fix(b, s, d))
     return 1;
+#endif
   while (e) {
     i++;
     if (i > 100)
@@ -305,7 +307,6 @@ check_dir(Part *d)
   Debug("cache_check_dir", "inside check dir");
   for (s = 0; s < d->segments; s++) {
     Dir *seg = dir_segment(s, d);
-    ink_debug_assert(dir_bucket_loop_check(dir_from_offset(d->header->freelist[s], seg), seg));
     for (i = 0; i < d->buckets; i++) {
       Dir *b = dir_bucket(i, seg);
       if (!(dir_bucket_length(b, s, d) >= 0)) return 0;
@@ -364,7 +365,9 @@ dir_clean_bucket(Dir *b, int s, Part *part)
 {
   Dir *e = b, *p = NULL;
   Dir *seg = dir_segment(s, part);
+#ifdef LOOP_CHECK_MODE
   int loop_count = 0;
+#endif
   do {
 #ifdef LOOP_CHECK_MODE
     loop_count++;
@@ -560,13 +563,13 @@ Lagain:
             // for the same document and so the collision stat
             // may not accurately reflect the number of documents
             // having the same first_key
-            Debug("cache_stats", "Incrementing dir collisions");
+            DDebug("cache_stats", "Incrementing dir collisions");
             CACHE_INC_DIR_COLLISIONS(d->mutex);
           }
           goto Lcont;
         }
         if (dir_valid(d, e)) {
-          Debug("dir_probe_hit", "found %X %X part %d bucket %d  boffset %d", key->word(0), key->word(1), d->fd, b, (int) dir_offset(e));
+          DDebug("dir_probe_hit", "found %X %X part %d bucket %d  boffset %d", key->word(0), key->word(1), d->fd, b, (int) dir_offset(e));
           dir_assign(result, e);
           *last_collision = e;
           ink_assert(dir_offset(e) * INK_BLOCK_SIZE < d->len);
@@ -577,18 +580,18 @@ Lagain:
           continue;
         }
       } else
-        Debug("dir_probe_tag", "tag mismatch %X %X vs expected %X", e, dir_tag(e), key->word(3));
+        DDebug("dir_probe_tag", "tag mismatch %X %X vs expected %X", e, dir_tag(e), key->word(3));
     Lcont:
       p = e;
       e = next_dir(e, seg);
     } while (e);
   if (collision) {              // last collision no longer in the list, retry
-    Debug("cache_stats", "Incrementing dir collisions");
+    DDebug("cache_stats", "Incrementing dir collisions");
     CACHE_INC_DIR_COLLISIONS(d->mutex);
     collision = NULL;
     goto Lagain;
   }
-  Debug("dir_probe_miss", "missed %X %X on part %d bucket %d at %X", key->word(0), key->word(1), d->fd, b, (long) seg);
+  DDebug("dir_probe_miss", "missed %X %X on part %d bucket %d at %X", key->word(0), key->word(1), d->fd, b, (long) seg);
   CHECK_DIR(d);
   return 0;
 }
@@ -637,7 +640,7 @@ Lfill:
   dir_assign_data(e, to_part);
   dir_set_tag(e, key->word(2));
   ink_assert(part_offset(d, e) < (d->skip + d->len));
-  Debug("dir_insert",
+  DDebug("dir_insert",
         "insert %X %X into part %d bucket %d at %X tag %X %X boffset %d",
         (long) e, key->word(0), d->fd, bi, (long) e, key->word(1), dir_tag(e), (int) dir_offset(e));
   CHECK_DIR(d);
@@ -657,8 +660,10 @@ dir_overwrite(CacheKey *key, Part *d, Dir *dir, Dir *overwrite, bool must_overwr
   Dir *b = dir_bucket(bi, seg);
   unsigned int t = DIR_MASK_TAG(key->word(2));
   int res = 1;
+#ifdef LOOP_CHECK_MODE
   int loop_count = 0;
   bool loop_possible = true;
+#endif
   Part *part = d;
   CHECK_DIR(d);
 
@@ -709,7 +714,7 @@ Lfill:
   dir_assign_data(e, dir);
   dir_set_tag(e, t);
   ink_assert(part_offset(d, e) < d->skip + d->len);
-  Debug("dir_overwrite",
+  DDebug("dir_overwrite",
         "overwrite %X %X into part %d bucket %d at %X tag %X %X boffset %d",
         (long) e, key->word(0), d->fd, bi, (long) e, t, dir_tag(e), (int) dir_offset(e));
   CHECK_DIR(d);
@@ -725,7 +730,9 @@ dir_delete(CacheKey *key, Part *d, Dir *del)
   int b = key->word(1) % d->buckets;
   Dir *seg = dir_segment(s, d);
   Dir *e = NULL, *p = NULL;
+#ifdef LOOP_CHECK_MODE
   int loop_count = 0;
+#endif
   Part *part = d;
   CHECK_DIR(d);
 
@@ -764,7 +771,7 @@ dir_lookaside_probe(CacheKey *key, Part *d, Dir *result, EvacuationBlock ** eblo
     if (b->evac_frags.key == *key) {
       if (dir_valid(d, &b->new_dir)) {
         *result = b->new_dir;
-        Debug("dir_lookaside", "probe %X success", key->word(0));
+        DDebug("dir_lookaside", "probe %X success", key->word(0));
         if (eblock)
           *eblock = b;
         return 1;
@@ -772,7 +779,7 @@ dir_lookaside_probe(CacheKey *key, Part *d, Dir *result, EvacuationBlock ** eblo
     }
     b = b->link.next;
   }
-  Debug("dir_lookaside", "probe %X failed", key->word(0));
+  DDebug("dir_lookaside", "probe %X failed", key->word(0));
   return 0;
 }
 
@@ -780,7 +787,7 @@ int
 dir_lookaside_insert(EvacuationBlock *eblock, Part *d, Dir *to)
 {
   CacheKey *key = &eblock->evac_frags.earliest_key;
-  Debug("dir_lookaside", "insert %X %X, offset %d phase %d", key->word(0), key->word(1), (int) dir_offset(to), (int) dir_phase(to));
+  DDebug("dir_lookaside", "insert %X %X, offset %d phase %d", key->word(0), key->word(1), (int) dir_offset(to), (int) dir_phase(to));
   ink_debug_assert(d->mutex->thread_holding == this_ethread());
   int i = key->word(3) % LOOKASIDE_SIZE;
   EvacuationBlock *b = new_EvacuationBlock(d->mutex->thread_holding);
@@ -803,7 +810,7 @@ dir_lookaside_fixup(CacheKey *key, Part *d)
   while (b) {
     if (b->evac_frags.key == *key) {
       int res = dir_overwrite(key, d, &b->new_dir, &b->dir, false);
-      Debug("dir_lookaside", "fixup %X %X offset %d phase %d %d",
+      DDebug("dir_lookaside", "fixup %X %X offset %d phase %d %d",
             key->word(0), key->word(1), dir_offset(&b->new_dir), dir_phase(&b->new_dir), res);
       d->ram_cache.fixup(key, 0, dir_offset(&b->dir), 0, dir_offset(&b->new_dir));
       d->lookaside[i].remove(b);
@@ -822,7 +829,7 @@ dir_lookaside_fixup(CacheKey *key, Part *d)
     }
     b = b->link.next;
   }
-  Debug("dir_lookaside", "fixup %X %X failed", key->word(0), key->word(1));
+  DDebug("dir_lookaside", "fixup %X %X failed", key->word(0), key->word(1));
   return 0;
 }
 
@@ -835,7 +842,7 @@ dir_lookaside_cleanup(Part *d)
     while (b) {
       if (!dir_valid(d, &b->new_dir)) {
         EvacuationBlock *nb = b->link.next;
-        Debug("dir_lookaside", "cleanup %X %X cleaned up", 
+        DDebug("dir_lookaside", "cleanup %X %X cleaned up", 
               b->evac_frags.earliest_key.word(0), b->evac_frags.earliest_key.word(1));
         d->lookaside[i].remove(b);
         free_CacheVC(b->earliest_evacuator);
@@ -857,7 +864,7 @@ dir_lookaside_remove(CacheKey *key, Part *d)
   EvacuationBlock *b = d->lookaside[i].head;
   while (b) {
     if (b->evac_frags.key == *key) {
-      Debug("dir_lookaside", "remove %X %X offset %d phase %d",
+      DDebug("dir_lookaside", "remove %X %X offset %d phase %d",
             key->word(0), key->word(1), dir_offset(&b->new_dir), dir_phase(&b->new_dir));
       d->lookaside[i].remove(b);
       free_EvacuationBlock(b, d->mutex->thread_holding);
@@ -865,7 +872,7 @@ dir_lookaside_remove(CacheKey *key, Part *d)
     }
     b = b->link.next;
   }
-  Debug("dir_lookaside", "remove %X %X failed", key->word(0), key->word(1));
+  DDebug("dir_lookaside", "remove %X %X failed", key->word(0), key->word(1));
   return;
 }
 
@@ -894,7 +901,6 @@ CacheSync::aio_write(int fd, char *b, int n, ink_off_t o)
 inku64
 dir_entries_used(Part *d)
 {
-
   inku64 full = 0;
   inku64 sfull = 0;
   for (int s = 0; s < d->segments; full += sfull, s++) {
@@ -909,7 +915,6 @@ dir_entries_used(Part *d)
       while (e) {
         if (dir_offset(e))
           sfull++;
-
         e = next_dir(e, seg);
         if (!e)
           break;
@@ -1310,7 +1315,7 @@ dir_corrupt_bucket(Dir *b, int s, Part *d)
     ink_release_assert(e);
     e = next_dir(e, seg);
   }
-  dir_next(e) = dir_to_offset(e, seg);
+  dir_set_next(e, dir_to_offset(e, seg));
 }
 
 EXCLUSIVE_REGRESSION_TEST(Cache_dir) (RegressionTest *t, int atype, int *status) {
@@ -1405,18 +1410,19 @@ EXCLUSIVE_REGRESSION_TEST(Cache_dir) (RegressionTest *t, int atype, int *status)
   }
 
 
-  Dir *last_collision = 0, *seg1 = 0;
+  Dir dir1;
   int s1, b1;
 
   rprintf(t, "corrupt_bucket test\n");
   for (int ntimes = 0; ntimes < 10; ntimes++) {
+#ifdef LOOP_CHECK_MODE
     // dir_probe in bucket with loop
     rand_CacheKey(&key, thread->mutex);
     s1 = key.word(0) % d->segments;
     b1 = key.word(1) % d->buckets;
     dir_corrupt_bucket(dir_bucket(b1, dir_segment(s1, d)), s1, d);
     dir_insert(&key, d, &dir);
-    last_collision = 0;
+    Dir *last_collision = 0;
     dir_probe(&key, d, &dir, &last_collision);
 
 
@@ -1434,7 +1440,7 @@ EXCLUSIVE_REGRESSION_TEST(Cache_dir) (RegressionTest *t, int atype, int *status)
     b1 = key.word(1) % d->buckets;
     CacheKey key1;
     key1.b[1] = 127;
-    Dir dir1 = dir;
+    dir1 = dir;
     dir_set_offset(&dir1, 23);
     dir_insert(&key1, d, &dir1);
     dir_insert(&key, d, &dir);
@@ -1453,7 +1459,7 @@ EXCLUSIVE_REGRESSION_TEST(Cache_dir) (RegressionTest *t, int atype, int *status)
 
     rand_CacheKey(&key, thread->mutex);
     s1 = key.word(0) % d->segments;
-    seg1 = dir_segment(s1, d);
+    Dir *seg1 = dir_segment(s1, d);
     // dir_freelist_length in freelist with loop
     dir_corrupt_bucket(dir_from_offset(d->header->freelist[s], seg1), s1, d);
     dir_freelist_length(d, s1);
@@ -1464,17 +1470,23 @@ EXCLUSIVE_REGRESSION_TEST(Cache_dir) (RegressionTest *t, int atype, int *status)
     // dir_bucket_length in bucket with loop
     dir_corrupt_bucket(dir_bucket(b1, dir_segment(s1, d)), s1, d);
     dir_bucket_length(dir_bucket(b1, dir_segment(s1, d)), s1, d);
-
-    // this assert by design
+    if (!check_dir(d))
+      ret = REGRESSION_TEST_FAILED;
+#else
+    // test corruption detection
     rand_CacheKey(&key, thread->mutex);
     s1 = key.word(0) % d->segments;
     b1 = key.word(1) % d->buckets;
 
-    dir_corrupt_bucket(dir_bucket(b1, dir_segment(3, d)), 3, d);
-    dir_corrupt_bucket(dir_bucket(b1, dir_segment(7, d)), 7, d);
-    dir_corrupt_bucket(dir_bucket(b1, dir_segment(17, d)), 17, d);
+    dir_insert(&key, d, &dir1);
+    dir_insert(&key, d, &dir1);
+    dir_insert(&key, d, &dir1);
+    dir_insert(&key, d, &dir1);
+    dir_insert(&key, d, &dir1);
+    dir_corrupt_bucket(dir_bucket(b1, dir_segment(s1, d)), s1, d);
     if (check_dir(d))
       ret = REGRESSION_TEST_FAILED;
+#endif
   }
   part_dir_clear(d);
   *status = ret;
