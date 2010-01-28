@@ -376,7 +376,7 @@ newUNIXsocket(char *fpath)
 
   serv_addr.sun_family = AF_UNIX;
   ink_strncpy(serv_addr.sun_path, fpath, sizeof(serv_addr.sun_path));
-#if (HOST_OS == darwin)
+#if (HOST_OS == darwin) || (HOST_OS == freebsd)
   servlen = sizeof(struct sockaddr_un);
 #else
   servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);

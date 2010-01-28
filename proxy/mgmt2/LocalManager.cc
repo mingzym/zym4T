@@ -487,7 +487,7 @@ LocalManager::initMgmtProcessServer()
   struct sockaddr_un serv_addr;
 
   snprintf(fpath, sizeof(fpath), "%s/%s", pserver_path, LM_CONNECTION_SERVER);
-#if (HOST_OS == freebsd)
+#if 0 /* (HOST_OS == freebsd) */
   char ulpath[1024];
   strcpy(ulpath, fpath);
   ulpath[strlen(fpath) - 1] = 0;
@@ -506,7 +506,7 @@ LocalManager::initMgmtProcessServer()
   memset(&serv_addr, 0, sizeof(serv_addr));
   serv_addr.sun_family = AF_UNIX;
   ink_strncpy(serv_addr.sun_path, fpath, sizeof(serv_addr.sun_path));
-#if (HOST_OS == darwin)
+#if (HOST_OS == darwin) || (HOST_OS == freebsd)
   servlen = sizeof(struct sockaddr_un);
 #else
   servlen = strlen(serv_addr.sun_path) + sizeof(serv_addr.sun_family);
