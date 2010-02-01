@@ -604,6 +604,11 @@ fi
 
 AC_CHECK_FUNCS([clock_gettime kqueue epoll_ctl posix_memalign lrand48_r srand48_r eventfd port_create])
 
+AC_CHECK_LIB([pcre], [pcre_exec], 
+  [AC_SUBST([LIBPCRE],["-lpcre"])],
+  [AC_MSG_FAILURE([check for pcre failed. Have you installed pcre-devel?])],
+)
+
 if test "x$enable_libev" = "xyes"; then
    AC_DEFINE([USE_LIBEV])
    have_good_poller=1
