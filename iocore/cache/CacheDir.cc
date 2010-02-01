@@ -1411,6 +1411,7 @@ EXCLUSIVE_REGRESSION_TEST(Cache_dir) (RegressionTest *t, int atype, int *status)
 
 
   Dir dir1;
+  memset(&dir1, 0, sizeof(dir1));
   int s1, b1;
 
   rprintf(t, "corrupt_bucket test\n");
