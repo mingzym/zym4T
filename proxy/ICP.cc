@@ -450,7 +450,6 @@ ICPPeerReadCont::ICPPeerQueryEvent(int event, Event * e)
         return EVENT_DONE;
       }
     case CACHE_EVENT_OPEN_READ_FAILED:
-    case CACHE_EVENT_OPEN_READ_FAILED_IN_PROGRESS:
       {
         event = CACHE_EVENT_LOOKUP_FAILED;
         break;

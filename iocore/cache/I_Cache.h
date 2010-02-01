@@ -57,51 +57,57 @@ struct CacheProcessor:public Processor
   int dir_check(bool fix);
   int db_check(bool fix);
 
-  inkcoreapi Action *lookup(Continuation * cont, CacheKey * key,
+  inkcoreapi Action *lookup(Continuation *cont, CacheKey *key,
                             bool local_only = false,
-                            CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
-  inkcoreapi Action *open_read(Continuation * cont, CacheKey * key,
-                               CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
-  Action *open_read_buffer(Continuation * cont, MIOBuffer * buf, CacheKey * key,
-                           CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
+                            CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, char *hostname = 0, int host_len = 0);
+  inkcoreapi Action *open_read(Continuation *cont, CacheKey *key,
+                               CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, char *hostname = 0, int host_len = 0);
+  Action *open_read_buffer(Continuation *cont, MIOBuffer *buf, CacheKey *key,
+                           CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, char *hostname = 0, int host_len = 0);
 
-  inkcoreapi Action *open_write(Continuation * cont, int expected_size,
-                                CacheKey * key, CacheFragType frag_type,
+  inkcoreapi Action *open_write(Continuation *cont, 
+                                CacheKey *key, 
+                                CacheFragType frag_type = CACHE_FRAG_TYPE_NONE,
+                                int expected_size = CACHE_EXPECTED_SIZE,
                                 bool overwrite = false,
-                                time_t pin_in_cache = (time_t) 0, char *hostname = 0, int host_len = 0);
-  Action *open_write_buffer(Continuation * cont, MIOBuffer * buf,
-                            CacheKey * key, bool overwrite = false,
-                            CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
-  inkcoreapi Action *remove(Continuation * cont, CacheKey * key,
+                                time_t pin_in_cache = (time_t) 0,
+                                char *hostname = 0, int host_len = 0);
+  Action *open_write_buffer(Continuation *cont, MIOBuffer *buf,
+                            CacheKey *key, 
+                            CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, 
+                            bool overwrite = false,
+                            time_t pin_in_cache = (time_t) 0,
+                            char *hostname = 0, int host_len = 0);
+  inkcoreapi Action *remove(Continuation *cont, CacheKey *key,
                             bool rm_user_agents = true, bool rm_link = false,
-                            CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
-  Action *scan(Continuation * cont, char *hostname = 0, int host_len = 0, int KB_per_second = 2500);
+                            CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, char *hostname = 0, int host_len = 0);
+  Action *scan(Continuation *cont, char *hostname = 0, int host_len = 0, int KB_per_second = 2500);
 #ifdef HTTP_CACHE
-  Action *lookup(Continuation * cont, URL * url, bool local_only = false,
+  Action *lookup(Continuation *cont, URL *url, bool local_only = false,
                  CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
-  inkcoreapi Action *open_read(Continuation * cont, URL * url,
-                               CacheHTTPHdr * request,
-                               CacheLookupHttpConfig * params,
+  inkcoreapi Action *open_read(Continuation *cont, URL *url,
+                               CacheHTTPHdr *request,
+                               CacheLookupHttpConfig *params,
                                time_t pin_in_cache = (time_t) 0, CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
-  Action *open_read_buffer(Continuation * cont, MIOBuffer * buf, URL * url,
-                           CacheHTTPHdr * request,
-                           CacheLookupHttpConfig * params, CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
-  Action *open_write(Continuation * cont, int expected_size, URL * url,
-                     CacheHTTPHdr * request, CacheHTTPInfo * old_info,
+  Action *open_read_buffer(Continuation *cont, MIOBuffer *buf, URL *url,
+                           CacheHTTPHdr *request,
+                           CacheLookupHttpConfig *params, CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
+  Action *open_write(Continuation *cont, int expected_size, URL *url,
+                     CacheHTTPHdr *request, CacheHTTPInfo *old_info,
                      time_t pin_in_cache = (time_t) 0, CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
-  Action *open_write_buffer(Continuation * cont, MIOBuffer * buf, URL * url,
-                            CacheHTTPHdr * request, CacheHTTPHdr * response,
+  Action *open_write_buffer(Continuation *cont, MIOBuffer *buf, URL *url,
+                            CacheHTTPHdr *request, CacheHTTPHdr *response,
                             CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
-  Action *remove(Continuation * cont, URL * url, CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
+  Action *remove(Continuation *cont, URL *url, CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP);
 
   Action *open_read_internal(int, Continuation *, MIOBuffer *, CacheURL *,
                              CacheHTTPHdr *, CacheLookupHttpConfig *,
                              CacheKey *, time_t, CacheFragType type, char *hostname, int host_len);
 #endif
-  Action *link(Continuation * cont, CacheKey * from, CacheKey * to,
+  Action *link(Continuation *cont, CacheKey *from, CacheKey *to,
                CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
 
-  Action *deref(Continuation * cont, CacheKey * key,
+  Action *deref(Continuation *cont, CacheKey *key,
                 CacheFragType frag_type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
   static int IsCacheEnabled();
 
@@ -124,12 +130,12 @@ struct CacheProcessor:public Processor
 
 struct CacheVConnection:public VConnection
 {
-  VIO *do_io_read(Continuation * c, ink64 nbytes, MIOBuffer * buf) = 0;
+  VIO *do_io_read(Continuation *c, ink64 nbytes, MIOBuffer *buf) = 0;
   virtual VIO *do_io_pread(Continuation *c, ink64 nbytes, MIOBuffer *buf, ink64 offset) = 0;
-  VIO *do_io_write(Continuation * c, ink64 nbytes, IOBufferReader * buf, bool owner = false) = 0;
+  VIO *do_io_write(Continuation *c, ink64 nbytes, IOBufferReader *buf, bool owner = false) = 0;
   void do_io_close(int lerrno = -1) = 0;
-  void reenable(VIO * avio) = 0;
-  void reenable_re(VIO * avio) = 0;
+  void reenable(VIO *avio) = 0;
+  void reenable_re(VIO *avio) = 0;
   void do_io_shutdown(ShutdownHowTo_t howto)
   {
     (void) howto;
@@ -140,8 +146,8 @@ struct CacheVConnection:public VConnection
   virtual int set_header(void *ptr, int len) = 0;
 
 #ifdef HTTP_CACHE
-  virtual void set_http_info(CacheHTTPInfo * info) = 0;
-  virtual void get_http_info(CacheHTTPInfo ** info) = 0;
+  virtual void set_http_info(CacheHTTPInfo *info) = 0;
+  virtual void get_http_info(CacheHTTPInfo **info) = 0;
 #endif
 
   virtual Action *action() = 0;

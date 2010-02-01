@@ -184,6 +184,7 @@ logcat_LDADD = \
   Prefetch.o \
   Update.o \
   TestHook.o \
+  RegressionSM.o \
   Plugin.o \
   PluginDB.o \
   InkAPI.o \
@@ -242,6 +243,7 @@ logstats_LDADD = \
   Prefetch.o \
   Update.o \
   TestHook.o \
+  RegressionSM.o \
   Plugin.o \
   PluginDB.o \
   InkAPI.o \
@@ -301,6 +303,7 @@ sac_LDADD = \
   Prefetch.o \
   Update.o \
   TestHook.o \
+  RegressionSM.o \
   Plugin.o \
   PluginDB.o \
   InkAPI.o \

@@ -47,7 +47,7 @@ RamCache::init(ink64 abytes, ink64 aobjects, int cutoff, Part * _part, ProxyMute
   partition_size = aobjects / n_partitions;
   cutoff_size = cutoff;
 
-  Debug("ram_cache", "initializing ram_cache, partition_size=%d, aobjects=%d, abytes=%d",
+  DDebug("ram_cache", "initializing ram_cache, partition_size=%d, aobjects=%d, abytes=%d",
         partition_size, aobjects, abytes);
   /* equivalent to ram cache disabled */
   if (partition_size == 0)
@@ -93,12 +93,12 @@ RamCache::get(INK_MD5 * key, Ptr<IOBufferData> *ret_data, inku32 auxkey1, inku32
       p->lru.remove(e, e->lru_link);
       p->lru.enqueue(e, e->lru_link);
       (*ret_data) = e->data;
-      Debug("ram_cache", "get %X %d %d HIT", k, auxkey1, auxkey2);
+      DDebug("ram_cache", "get %X %d %d HIT", k, auxkey1, auxkey2);
       return 1;
     }
     e = e->hash_link.next;
   }
-  Debug("ram_cache", "get %X %d %d MISS", k, auxkey1, auxkey2);
+  DDebug("ram_cache", "get %X %d %d MISS", k, auxkey1, auxkey2);
   return 0;
 }
 
@@ -124,7 +124,7 @@ RamCache::remove_entry(RamCacheEntry * ee, RamCachePartition * p, EThread * t)
   p->cur_bytes -= ee->data->block_size();
   ProxyMutex *mutex = part->mutex;
   CACHE_SUM_DYN_STAT(cache_ram_cache_bytes_stat, -ee->data->block_size());
-  Debug("ram_cache", "put %X %d %d FREED", ee->key.word(3), ee->auxkey1, ee->auxkey2);
+  DDebug("ram_cache", "put %X %d %d FREED", ee->key.word(3), ee->auxkey1, ee->auxkey2);
   free_RamCacheEntry(ee, t);
 }
 
@@ -149,7 +149,7 @@ RamCache::put(INK_MD5 * key, IOBufferData * data, EThread * t, inku32 auxkey1, i
   unsigned short oldseen = p->seen[s];
   p->seen[s] = (unsigned short) k3;
   if ((oldseen != (unsigned short) k3) && bytes <= p->cur_bytes + RAM_CACHE_FAST_LOAD_SIZE) {
-    Debug("ram_cache", "put %X %d %d FIRST SEEN", k, auxkey1, auxkey2);
+    DDebug("ram_cache", "put %X %d %d FIRST SEEN", k, auxkey1, auxkey2);
     return 0;
   }
 
@@ -158,7 +158,7 @@ RamCache::put(INK_MD5 * key, IOBufferData * data, EThread * t, inku32 auxkey1, i
     RamCacheEntry *n = e->hash_link.next;
     if (e->key == *key) {
       if (e->auxkey1 == auxkey1 && e->auxkey2 == auxkey2) {
-        Debug("ram_cache", "put %X %d %d PRESENT", k, auxkey1, auxkey2);
+        DDebug("ram_cache", "put %X %d %d PRESENT", k, auxkey1, auxkey2);
         return 1;               // already present
       } else {
         p->lru.remove(e, e->lru_link);
@@ -185,7 +185,7 @@ RamCache::put(INK_MD5 * key, IOBufferData * data, EThread * t, inku32 auxkey1, i
     else
       break;
   }
-  Debug("ram_cache", "put %X %d %d INSERTED", k, auxkey1, auxkey2);
+  DDebug("ram_cache", "put %X %d %d INSERTED", k, auxkey1, auxkey2);
   return 1;
 }
 
@@ -208,7 +208,7 @@ RamCache::fixup(INK_MD5 * key, inku32 old_auxkey1, inku32 old_auxkey2, inku32 ne
   /* equivalent to ram cache disabled */
   if (partition_size == 0)
     return 0;
-  Debug("ram_cache", "fixup %d", key);
+  DDebug("ram_cache", "fixup %d", key);
   inku32 k = key->word(3);
   inku32 pp = k % n_partitions;
   RamCachePartition *p = &partition[pp];

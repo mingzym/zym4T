@@ -3047,3 +3047,8 @@ CacheProcessor::remove(Continuation *cont, URL *url, CacheFragType frag_type)
   }
   return caches[frag_type]->remove(cont, url, frag_type);
 }
+
+void force_loading_of_CacheTest() {
+  cache_regression_test = 1; // force loading of .o
+}
+

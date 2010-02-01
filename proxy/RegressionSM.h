@@ -36,19 +36,16 @@ struct RegressionSM : Continuation {
 
   RegressionTest *t; // for use with rprint
 
+  // methods to override
   virtual void run(); // replace with leaf regression
+  virtual RegressionSM *clone() { return new RegressionSM(*this); } // replace for run_xxx(int n,...);
+
+  // public API
   void done(int status = REGRESSION_TEST_NOT_RUN);
   void run(int *pstatus);
   void run_in(int *pstatus, ink_hrtime t);
-  void do_run(RegressionSM *sm);
-  RegressionSM *do_sequential(RegressionSM *sm, ...); // terminate list in NULL
-  RegressionSM *do_sequential(int n, RegressionSM *sm);
-  RegressionSM *do_parallel(RegressionSM *sm, ...); // terminate list in NULL
-  RegressionSM *do_parallel(int n, RegressionSM *sm);
-  virtual RegressionSM *clone() { return new RegressionSM(*this); } // for run_xxx(int n,...);
 
-  // Internal
-
+  // internal
   int status;
   int *pstatus;
   RegressionSM *parent;
@@ -74,5 +71,10 @@ struct RegressionSM : Continuation {
   }
   RegressionSM(const RegressionSM &);
 };
+
+RegressionSM *r_sequential(RegressionTest *t, ...); // terminate list in NULL
+RegressionSM *r_sequential(RegressionTest *t, int n, RegressionSM *sm);
+RegressionSM *r_parallel(RegressionTest *t, ...); // terminate list in NULL
+RegressionSM *r_parallel(RegressionTest *t, int n, RegressionSM *sm);
 
 #endif

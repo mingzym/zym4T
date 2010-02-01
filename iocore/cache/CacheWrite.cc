@@ -276,7 +276,7 @@ Part::force_evacuate_head(Dir *evac_dir, int pinned)
   if (!b) {
     b = new_EvacuationBlock(mutex->thread_holding);
     b->dir = *evac_dir;
-    Debug("cache_evac", "force: %d, %d", (int) dir_offset(evac_dir), (int) dir_phase(evac_dir));
+    DDebug("cache_evac", "force: %d, %d", (int) dir_offset(evac_dir), (int) dir_phase(evac_dir));
     evacuate[dir_evac_bucket(evac_dir)].push(b);
   }
   b->f.pinned = pinned;
@@ -297,7 +297,7 @@ Part::scan_for_pinned_documents()
     int pe = offset_to_part_offset(this, header->write_pos + 2 * EVACUATION_SIZE + (len / PIN_SCAN_EVERY));
     int part_end_offset = offset_to_part_offset(this, len + skip);
     int before_end_of_part = pe < part_end_offset;
-    Debug("cache_evac", "scan %d %d", ps, pe);
+    DDebug("cache_evac", "scan %d %d", ps, pe);
     for (int i = 0; i < part_direntries(this); i++) {
       // is it a valid pinned object?
       if (!dir_is_empty(&dir[i]) && dir_pinned(&dir[i]) && dir_head(&dir[i])) {
@@ -311,7 +311,7 @@ Part::scan_for_pinned_documents()
             continue;
         }
         force_evacuate_head(&dir[i], 1);
-        //      Debug("cache_evac", "scan pinned at offset %d %d %d %d %d %d",
+        //      DDebug("cache_evac", "scan pinned at offset %d %d %d %d %d %d",
         //            (int)dir_offset(&b->dir), ps, o , pe, i, (int)b->f.done);
       }
     }
@@ -343,7 +343,7 @@ Part::aggWriteDone(int event, Event *e)
     header->last_write_pos = header->write_pos;
     header->write_pos += io.aiocb.aio_nbytes;
     ink_assert(header->write_pos >= start);
-    Debug("cache_agg", "Dir %s, Write: %llu, last Write: %llu\n", 
+    DDebug("cache_agg", "Dir %s, Write: %llu, last Write: %llu\n", 
           hash_id, header->write_pos, header->last_write_pos);
     ink_assert(header->write_pos == header->agg_pos);
     if (header->write_pos + EVACUATION_SIZE > scan_pos)
@@ -439,7 +439,7 @@ CacheVC::evacuateReadHead(int event, Event *e)
     if (!(next_key == earliest_key))
       goto Ldone;
     doc_len = doc->total_len;
-    Debug("cache_evac",
+    DDebug("cache_evac",
           "evacuateReadHead non-http earliest %X first: %X len: %d", first_key.word(0), earliest_key.word(0), doc_len);
   }
   if (doc_len == total_len) {
@@ -469,7 +469,7 @@ CacheVC::evacuateDocDone(int event, Event *e)
 
   ink_debug_assert(part->mutex->thread_holding == this_ethread());
   Doc *doc = (Doc *) buf->data();
-  Debug("cache_evac", "evacuateDocDone %X o %d p %d new_o %d new_p %d",
+  DDebug("cache_evac", "evacuateDocDone %X o %d p %d new_o %d new_p %d",
         (int) key.word(0), (int) dir_offset(&overwrite_dir),
         (int) dir_phase(&overwrite_dir), (int) dir_offset(&dir), (int) dir_phase(&dir));
   int i = dir_evac_bucket(&overwrite_dir);
@@ -493,7 +493,7 @@ CacheVC::evacuateDocDone(int event, Event *e)
         if (!evac)
           break;
         if (evac->earliest_key.fold()) {
-          Debug("cache_evac", "evacdocdone: evacuating key %X earliest %X",
+          DDebug("cache_evac", "evacdocdone: evacuating key %X earliest %X",
                 evac->key.word(0), evac->earliest_key.word(0));
           EvacuationBlock *eblock = 0;
           Dir dir_tmp;
@@ -515,17 +515,17 @@ CacheVC::evacuateDocDone(int event, Event *e)
       // Cache::open_write). Once we know its the vector, we can
       // safely overwrite the first_key in the directory.
       if (dir_head(&overwrite_dir) && b->f.evacuate_head) {
-        Debug("cache_evac",
+        DDebug("cache_evac",
               "evacuateDocDone evacuate_head %X %X hlen %d offset %d",
               (int) key.word(0), (int) doc->key.word(0), doc->hlen, (int) dir_offset(&overwrite_dir));
 
         if (dir_compare_tag(&overwrite_dir, &doc->first_key)) {
           OpenDirEntry *cod;
-          Debug("cache_evac", "evacuating vector: %X %d",
+          DDebug("cache_evac", "evacuating vector: %X %d",
                 (int) doc->first_key.word(0), (int) dir_offset(&overwrite_dir));
           if ((cod = part->open_read(&doc->first_key))) {
             // writer  exists
-            Debug("cache_evac", "overwriting the open directory %X %d %d",
+            DDebug("cache_evac", "overwriting the open directory %X %d %d",
                   (int) doc->first_key.word(0), (int) dir_offset(&cod->first_dir), (int) dir_offset(&dir));
             ink_assert(dir_pinned(&dir));
             cod->first_dir = dir;
@@ -535,7 +535,7 @@ CacheVC::evacuateDocDone(int event, Event *e)
             part->ram_cache.fixup(&doc->first_key, 0, dir_offset(&overwrite_dir), 0, dir_offset(&dir));
           }
         } else {
-          Debug("cache_evac", "evacuating earliest: %X %d", (int) doc->key.word(0), (int) dir_offset(&overwrite_dir));
+          DDebug("cache_evac", "evacuating earliest: %X %d", (int) doc->key.word(0), (int) dir_offset(&overwrite_dir));
           ink_debug_assert(dir_compare_tag(&overwrite_dir, &doc->key));
           ink_assert(b->earliest_evacuator == this);
           total_len += doc->data_len();
@@ -587,7 +587,7 @@ evacuate_fragments(CacheKey *key, CacheKey *earliest_key, int force, Part *part)
     }
     if (force)
       b->readers = 0;
-    Debug("cache_evac",
+    DDebug("cache_evac",
           "next fragment %X Earliest: %X offset %d phase %d force %d",
           (int) key->word(0), (int) earliest_key->word(0), (int) dir_offset(&dir), (int) dir_phase(&dir), force);
   }
@@ -634,7 +634,7 @@ Part::evacuateDocReadDone(int event, Event *e)
     ink_assert(doc->magic == DOC_MAGIC);
     goto Ldone;
   }
-  Debug("cache_evac", "evacuateDocReadDone %X offset %d",
+  DDebug("cache_evac", "evacuateDocReadDone %X offset %d",
         (int) doc->key.word(0), (int) dir_offset(&doc_evacuator->overwrite_dir));
 
   b = evacuate[dir_evac_bucket(&doc_evacuator->overwrite_dir)].head;
@@ -655,7 +655,7 @@ Part::evacuateDocReadDone(int event, Event *e)
     if (dir_compare_tag(&b->dir, &doc->first_key)) {
       doc_evacuator->key = doc->first_key;
       b->evac_frags.key = doc->first_key;
-      Debug("cache_evac", "evacuating vector %X offset %d",
+      DDebug("cache_evac", "evacuating vector %X offset %d",
             (int) doc->first_key.word(0), (int) dir_offset(&doc_evacuator->overwrite_dir));
       b->f.unused = 57;
     } else {
@@ -668,7 +668,7 @@ Part::evacuateDocReadDone(int event, Event *e)
       b->evac_frags.key = doc->key;
       b->evac_frags.earliest_key = doc->key;
       b->earliest_evacuator = doc_evacuator;
-      Debug("cache_evac", "evacuating earliest %X %X evac: %X offset: %d",
+      DDebug("cache_evac", "evacuating earliest %X %X evac: %X offset: %d",
             (int) b->evac_frags.key.word(0), (int) doc->key.word(0),
             doc_evacuator, (int) dir_offset(&doc_evacuator->overwrite_dir));
       b->f.unused = 67;
@@ -683,7 +683,7 @@ Part::evacuateDocReadDone(int event, Event *e)
     }
     doc_evacuator->key = ek->key;
     doc_evacuator->earliest_key = ek->earliest_key;
-    Debug("cache_evac", "evacuateDocReadDone key: %X earliest: %X",
+    DDebug("cache_evac", "evacuateDocReadDone key: %X earliest: %X",
           (int) ek->key.word(0), (int) ek->earliest_key.word(0));
     b->f.unused = 87;
   }
@@ -736,7 +736,7 @@ Part::evac_range(ink_off_t low, ink_off_t high, int evac_phase)
       io.aiocb.aio_buf = doc_evacuator->buf->data();
       io.action = this;
       io.thread = AIO_CALLBACK_THREAD_ANY;
-      Debug("cache_evac", "evac_range evacuating %X %d", (int)dir_tag(&first->dir), (int)dir_offset(&first->dir));
+      DDebug("cache_evac", "evac_range evacuating %X %d", (int)dir_tag(&first->dir), (int)dir_offset(&first->dir));
       SET_HANDLER(&Part::evacuateDocReadDone);
       ink_assert(ink_aio_read(&io) >= 0);
       return -1;
@@ -903,7 +903,7 @@ Part::evacuate_cleanup_blocks(int i)
           header->write_pos > part_offset(this, &b->dir)) ||
          (header->phase == dir_phase(&b->dir) && header->write_pos <= part_offset(this, &b->dir)))) {
       EvacuationBlock *x = b;
-      Debug("cache_evac", "evacuate cleanup free %X offset %d",
+      DDebug("cache_evac", "evacuate cleanup free %X offset %d",
             (int) b->evac_frags.key.word(0), (int) dir_offset(&b->dir));
       b = b->link.next;
       evacuate[i].remove(x);
@@ -990,7 +990,7 @@ Lagain:
     if (agg_buf_pos + writelen > AGG_SIZE || 
         header->write_pos + agg_buf_pos + writelen > (skip + len))
       break;
-    Debug("agg_read", "copying: %d, %llu, key: %d", 
+    DDebug("agg_read", "copying: %d, %llu, key: %d", 
           agg_buf_pos, header->write_pos + agg_buf_pos, c->first_key.word(0));
     int wrotelen = agg_copy(agg_buffer + agg_buf_pos, c);
     ink_assert(writelen == wrotelen);
@@ -1105,7 +1105,7 @@ CacheVC::openWriteCloseDir(int event, Event *e)
   // updates we dont decrement the variable corresponding the old
   // size of the document
   if ((closed == 1) && (total_len > 0)) {
-    Debug("cache_stats", "Fragment = %d", fragment);
+    DDebug("cache_stats", "Fragment = %d", fragment);
     switch (fragment) {
       case 0: CACHE_INCREMENT_DYN_STAT(cache_single_fragment_document_count_stat); break;
       case 1: CACHE_INCREMENT_DYN_STAT(cache_two_fragment_document_count_stat); break;
@@ -1296,7 +1296,7 @@ CacheVC::openWriteWriteDone(int event, Event *e)
     fragment++;
     write_pos += write_len;
     dir_insert(&key, part, &dir);
-    Debug("cache_insert", "WriteDone: %X, %X, %d", key.word(0), first_key.word(0), write_len);
+    DDebug("cache_insert", "WriteDone: %X, %X, %d", key.word(0), first_key.word(0), write_len);
     blocks = iobufferblock_skip(blocks, &offset, &length, write_len);
     next_CacheKey(&key, &key);
   }
@@ -1447,7 +1447,7 @@ CacheVC::openWriteStartDone(int event, Event *e)
        to NULL.
      */
     if (!dir_valid(part, &dir)) {
-      Debug("cache_write",
+      DDebug("cache_write",
             "OpenReadStartDone: Dir not valid: Write Head: %d, Dir: %d",
             offset_to_part_offset(part, part->header->write_pos), dir_offset(&dir));
       last_collision = NULL;
@@ -1702,7 +1702,7 @@ Cache::open_write(Continuation *cont, CacheKey *key, CacheHTTPInfo *info, time_t
      */
     c->f.update = 1;
     c->base_stat = cache_update_active_stat;
-    Debug("cache_update", "Update called");
+    DDebug("cache_update", "Update called");
     info->object_key_get(&c->update_key);
     ink_debug_assert(!(c->update_key == zero_key));
     c->update_len = info->object_size_get();

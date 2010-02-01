@@ -68,26 +68,24 @@ void RegressionSM::run_in(int *apstatus, ink_hrtime t) {
 }
 
 void RegressionSM::child_done(int astatus) {
-  { 
-    MUTEX_LOCK(l, mutex, this_ethread());
-    if (pending_action) {
-      pending_action->cancel();
-      pending_action = 0;
-    }
-    ink_assert(nwaiting > 0);
-    --nwaiting;
-    set_status(astatus);
-  }
+  MUTEX_LOCK(l, mutex, this_ethread());
+  ink_assert(nwaiting > 0);
+  --nwaiting;
+  set_status(astatus);
 }
 
 int RegressionSM::regression_sm_waiting(int event, void *data) {
   if (!nwaiting) {
     done(REGRESSION_TEST_NOT_RUN);
     delete this;
+    return EVENT_DONE;
   }
-  else
+  if (par || nwaiting > 1) {
     ((Event*)data)->schedule_in(REGRESSION_SM_RETRY);
-  return EVENT_CONT;
+    return EVENT_CONT;
+  }
+  run();
+  return EVENT_DONE;
 }
 
 int RegressionSM::regression_sm_start(int event, void *data) {
@@ -95,16 +93,15 @@ int RegressionSM::regression_sm_start(int event, void *data) {
   return EVENT_CONT;
 }
 
-RegressionSM *RegressionSM::do_sequential(RegressionSM *sm, ...) {
+RegressionSM *r_sequential(RegressionTest *t, ...) {
   RegressionSM *new_sm = new RegressionSM(t);
   va_list ap;
-  va_start(ap, sm);
+  va_start(ap, t);
   new_sm->par = false;
   new_sm->rep = false;
   new_sm->ichild = 0;
   new_sm->nchildren = 0;
   new_sm->nwaiting = 0;
-  new_sm->children(new_sm->nchildren++) = sm;
   while (1) {
     RegressionSM *x = va_arg(ap, RegressionSM*);
     if (!x) break;
@@ -115,7 +112,7 @@ RegressionSM *RegressionSM::do_sequential(RegressionSM *sm, ...) {
   return new_sm;
 }
 
-RegressionSM *RegressionSM::do_sequential(int an, RegressionSM *sm) {
+RegressionSM *r_sequential(RegressionTest *t, int an, RegressionSM *sm) {
   RegressionSM *new_sm = new RegressionSM(t);
   new_sm->par = false;
   new_sm->rep = true;
@@ -127,16 +124,15 @@ RegressionSM *RegressionSM::do_sequential(int an, RegressionSM *sm) {
   return new_sm;
 }
 
-RegressionSM *RegressionSM::do_parallel(RegressionSM *sm, ...) {
+RegressionSM *r_parallel(RegressionTest *t, ...) {
   RegressionSM *new_sm = new RegressionSM(t);
   va_list ap;
-  va_start(ap, sm);
+  va_start(ap, t);
   new_sm->par = true;
   new_sm->rep = false;
   new_sm->ichild = 0;
   new_sm->nchildren = 0;
   new_sm->nwaiting = 0;
-  new_sm->children(new_sm->nchildren++) = sm;
   while (1) {
     RegressionSM *x = va_arg(ap, RegressionSM*);
     if (!x) break;
@@ -147,7 +143,7 @@ RegressionSM *RegressionSM::do_parallel(RegressionSM *sm, ...) {
   return new_sm;
 }
 
-RegressionSM *RegressionSM::do_parallel(int an, RegressionSM *sm) {
+RegressionSM *r_parallel(RegressionTest *t, int an, RegressionSM *sm) {
   RegressionSM *new_sm = new RegressionSM(t);
   new_sm->par = true;
   new_sm->rep = true;
@@ -162,10 +158,10 @@ RegressionSM *RegressionSM::do_parallel(int an, RegressionSM *sm) {
 void RegressionSM::run() {
   {
     MUTEX_TRY_LOCK(l, mutex, this_ethread());
-    if (!l || nwaiting)
-      pending_action = eventProcessor.schedule_in(this, REGRESSION_SM_RETRY);
+    if (!l || nwaiting > 1)
+      goto Lretry;
     RegressionSM *x = 0;
-    for (; ichild < n; ichild++) {
+    while (ichild < n) {
       if (!rep)
         x = children[ichild];
       else {
@@ -174,11 +170,14 @@ void RegressionSM::run() {
         else
           x = children[(intptr_t)0];
       }
+      if (!ichild) nwaiting++;
       x->xrun(this);
-      if (!par && nwaiting)
+      ichild++;
+      if (!par && nwaiting > 1)
         goto Lretry;
     }
   }
+  nwaiting--;
   if (!nwaiting) {
     done(REGRESSION_TEST_NOT_RUN);
     delete this;
@@ -187,17 +186,6 @@ void RegressionSM::run() {
 Lretry:
   SET_HANDLER(&RegressionSM::regression_sm_waiting);
   pending_action = eventProcessor.schedule_in(this, REGRESSION_SM_RETRY);
-}
-
-void RegressionSM::do_run(RegressionSM *sm) {
-  par = false;
-  rep = true;
-  ichild = 0;
-  nchildren = 1;
-  children(0) = sm;
-  nwaiting = 0;
-  n = 1;
-  RegressionSM::run();
 }
 
 RegressionSM::RegressionSM(const RegressionSM &ao) {
@@ -214,13 +202,14 @@ RegressionSM::RegressionSM(const RegressionSM &ao) {
   ichild = o.ichild;
   par = o.par;
   rep = o.rep;
+  pending_action = o.pending_action;
   ink_assert(status == REGRESSION_TEST_INPROGRESS);
   ink_assert(nwaiting == 0);
   ink_assert(ichild == 0);
   mutex = new_ProxyMutex();
 }
 
-struct ReRegressionSM1 : RegressionSM {
+struct ReRegressionSM : RegressionSM {
   virtual void run() {
     if (time(NULL) < 1) { // example test
       rprintf(t,"impossible");
@@ -228,32 +217,25 @@ struct ReRegressionSM1 : RegressionSM {
     } else
       done(REGRESSION_TEST_PASSED);
   }
-  ReRegressionSM1(RegressionTest *at) : RegressionSM(at) {}
-  virtual RegressionSM *clone() { return new ReRegressionSM1(*this); }
-  ReRegressionSM1(const ReRegressionSM1 &o) {
+  ReRegressionSM(RegressionTest *at) : RegressionSM(at) {}
+  virtual RegressionSM *clone() { return new ReRegressionSM(*this); }
+  ReRegressionSM(const ReRegressionSM &o) {
     t = o.t;
   }
 };
 
-struct ReRegressionSM2 : RegressionSM {
-  virtual void run() {
-    do_run(
-      do_sequential(
-        do_parallel(new ReRegressionSM1(t), new ReRegressionSM1(t), NULL),
-        do_sequential(new ReRegressionSM1(t), new ReRegressionSM1(t), NULL),
-        do_parallel(3, new ReRegressionSM1(t)),
-        do_sequential(3, new ReRegressionSM1(t)),
-        do_parallel(
-          do_sequential(2, new ReRegressionSM1(t)),
-          do_parallel(2, new ReRegressionSM1(t)),
-          NULL),
-        NULL));
-  }
-  ReRegressionSM2(RegressionTest *at) : RegressionSM(at) {}
-};
-
 REGRESSION_TEST(RegressionSM)(RegressionTest *t, int atype, int *pstatus) {
-  ReRegressionSM2 *sm = new ReRegressionSM2(t); 
-  sm->run_in(pstatus, HRTIME_SECOND);
+  r_sequential(
+    t, 
+    r_parallel(t, new ReRegressionSM(t), new ReRegressionSM(t), NULL),
+    r_sequential(t, new ReRegressionSM(t), new ReRegressionSM(t), NULL),
+    r_parallel(t, 3, new ReRegressionSM(t)),
+    r_sequential(t, 3, new ReRegressionSM(t)),
+    r_parallel(
+      t,
+      r_sequential(t, 2, new ReRegressionSM(t)),
+      r_parallel(t, 2, new ReRegressionSM(t)),
+      NULL),
+    NULL)->run(pstatus);
 }
 

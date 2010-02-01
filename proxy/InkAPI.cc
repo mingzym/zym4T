@@ -7031,8 +7031,7 @@ INKCacheWrite(INKCont contp, INKCacheKey key)
   CacheInfo *info = (CacheInfo *) key;
   Continuation *i = (INKContInternal *) contp;
   return (INKAction)
-    cacheProcessor.open_write(i, 0, &info->cache_key,
-                              info->frag_type, false, info->pin_in_cache, info->hostname, info->len);
+    cacheProcessor.open_write(i, &info->cache_key, info->frag_type, 0, false, info->pin_in_cache, info->hostname, info->len);
 }
 
 INKAction
@@ -7983,8 +7982,8 @@ INKCacheOverwrite(INKCont contp, INKCacheKey key)
   CacheInfo *info = (CacheInfo *) key;
   Continuation *i = (INKContInternal *) contp;
   return (INKAction)
-    cacheProcessor.open_write(i, 0, &info->cache_key,
-                              info->frag_type, true, info->pin_in_cache, info->hostname, info->len);
+    cacheProcessor.open_write(i, &info->cache_key,
+                              info->frag_type, 0, true, info->pin_in_cache, info->hostname, info->len);
 }
 
 void

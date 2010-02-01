@@ -30,6 +30,7 @@ libinkcache_a_SOURCES = \
   CachePart.cc \
   CacheRead.cc \
   CacheWrite.cc \
+  CacheTest.cc \
   I_Cache.h \
   I_CacheDefs.h \
   I_Store.h \

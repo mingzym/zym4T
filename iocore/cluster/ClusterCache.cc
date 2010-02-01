@@ -1596,14 +1596,6 @@ CacheContinuation::setupReadWriteVC(int event, VConnection * vc)
       return handleEvent(event, vc);
       break;
     }
-  case CACHE_EVENT_OPEN_READ_FAILED_IN_PROGRESS:
-    {
-      // open read in-progress, just deflect to final completion handler
-
-      SET_HANDLER((CacheContHandler) & CacheContinuation::replyOpEvent);
-      return handleEvent(event, vc);
-      break;
-    }
   case CACHE_EVENT_OPEN_READ_FAILED:
     {
       if (frag_type == CACHE_FRAG_TYPE_HTTP) {
@@ -2034,7 +2026,6 @@ cache_op_result_ClusterFunction(ClusterMachine * from, void *d, int l)
     case CACHE_EVENT_LINK_FAILED:
       break;
     case CACHE_EVENT_OPEN_READ_FAILED:
-    case CACHE_EVENT_OPEN_READ_FAILED_IN_PROGRESS:
     case CACHE_EVENT_OPEN_WRITE_FAILED:
     case CACHE_EVENT_REMOVE_FAILED:
     case CACHE_EVENT_UPDATE_FAILED:
