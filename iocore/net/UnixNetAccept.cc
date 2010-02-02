@@ -367,7 +367,7 @@ NetAccept::acceptEvent(int event, void *ep)
 
     //ink_debug_assert(ifd < 0 || event == EVENT_INTERVAL || (pd->nfds > ifd && pd->pfd[ifd].fd == server.fd));
     //if (ifd < 0 || event == EVENT_INTERVAL || (pd->pfd[ifd].revents & (POLLIN | POLLERR | POLLHUP | POLLNVAL))) {
-    ink_debug_assert(!"incomplete");
+    //ink_debug_assert(!"incomplete");
       int res;
       if ((res = accept_fn(this, e, false)) < 0) {
         NET_DECREMENT_DYN_STAT(net_accepts_currently_open_stat);

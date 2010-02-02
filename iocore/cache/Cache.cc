@@ -458,6 +458,8 @@ CacheProcessor::start(int)
 int
 CacheProcessor::start_internal(int flags)
 {
+  verify_cache_api();
+
   start_internal_flags = flags;
   clear = !!(flags & PROCESSOR_RECONFIGURE) || auto_clear_flag;
   fix = !!(flags & PROCESSOR_FIX);
@@ -3047,8 +3049,3 @@ CacheProcessor::remove(Continuation *cont, URL *url, CacheFragType frag_type)
   }
   return caches[frag_type]->remove(cont, url, frag_type);
 }
-
-void force_loading_of_CacheTest() {
-  cache_regression_test = 1; // force loading of .o
-}
-
