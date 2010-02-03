@@ -40,8 +40,8 @@ RecRawStatBlock *aio_rsb = NULL;
 // acquire this mutex before inserting a new entry in the aio_reqs array.
 // Don't need to acquire this for searching the array
 static ink_mutex insert_mutex;
-RecInt cache_config_threads_per_disk = 12;
 Continuation *aio_err_callbck = 0;
+RecInt cache_config_threads_per_disk = 12;
 
 // AIO Stats
 inku64 aio_num_read = 0;
@@ -151,13 +151,10 @@ ink_aio_init(ModuleVersion v)
   RecRegisterRawStat(aio_rsb, RECT_PROCESS,
                      "proxy.process.cache.KB_write_per_sec",
                      RECD_FLOAT, RECP_NULL, (int) AIO_STAT_KB_WRITE_PER_SEC, aio_stats_cb);
-
-  if (!ts_config_with_inkdiskio) {
-    memset(&aio_reqs, 0, MAX_DISKS_POSSIBLE * sizeof(AIO_Reqs *));
-    ink_mutex_init(&insert_mutex, NULL);
-    IOCORE_RegisterConfigInteger(RECT_CONFIG, "proxy.config.cache.threads_per_disk", 4, RECU_NULL, RECC_NULL, NULL);
-    IOCORE_ReadConfigInteger(cache_config_threads_per_disk, "proxy.config.cache.threads_per_disk");
-  }
+  memset(&aio_reqs, 0, MAX_DISKS_POSSIBLE * sizeof(AIO_Reqs *));
+  ink_mutex_init(&insert_mutex, NULL);
+  IOCORE_RegisterConfigInteger(RECT_CONFIG, "proxy.config.cache.threads_per_disk", 4, RECU_NULL, RECC_NULL, NULL);
+  IOCORE_ReadConfigInteger(cache_config_threads_per_disk, "proxy.config.cache.threads_per_disk");
 }
 
 int
@@ -225,16 +222,14 @@ aio_init_fildes(int fildes)
 
   aio_reqs[num_filedes] = request;
 
-  if (!ts_config_with_inkdiskio) {
-    /* create the main thread */
-    AIOThreadInfo *thr_info;
-    for (i = 0; i < cache_config_threads_per_disk; i++) {
-      if (i == (cache_config_threads_per_disk - 1))
-        thr_info = new AIOThreadInfo(request, 1);
-      else
-        thr_info = new AIOThreadInfo(request, 0);
-      ink_assert(eventProcessor.spawn_thread(thr_info));
-    }
+  /* create the main thread */
+  AIOThreadInfo *thr_info;
+  for (i = 0; i < cache_config_threads_per_disk; i++) {
+    if (i == (cache_config_threads_per_disk - 1))
+      thr_info = new AIOThreadInfo(request, 1);
+    else
+      thr_info = new AIOThreadInfo(request, 0);
+    ink_assert(eventProcessor.spawn_thread(thr_info));
   }
 
   /* the num_filedes should be incremented after initializing everything.

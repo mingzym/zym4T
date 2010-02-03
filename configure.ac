@@ -61,7 +61,7 @@ AC_ARG_WITH([user],
   [
   with_user="$withval"
   ],[
-  with_user="$build_person"
+  with_user="nobody"
   ]
 )
 
@@ -70,7 +70,7 @@ AC_ARG_WITH([group],
   [
   with_group="$withval"
   ],[
-  with_group="$build_group"
+  with_group="nobody"
   ]
 )
 AC_SUBST([pkgsysuser],[$with_user])
@@ -122,21 +122,6 @@ AC_ARG_ENABLE([purify],
 AC_MSG_RESULT([$enable_purify])
 AS_IF([test "x$enable_purify" = "xyes"],
   [AC_DEFINE([PURIFY])]
-)
-
-#
-# Disk InkAIO
-#
-
-AC_MSG_CHECKING([whether to enable disk InkAIO])
-AC_ARG_ENABLE([diskinkaio],
-  [AS_HELP_STRING([--enable-diskinkaio],[enable disk InkAIO])],
-  [],
-  [enable_diskinkaio=no]
-)
-AC_MSG_RESULT([$enable_diskinkaio])
-AS_IF([test "x$enable_diskinkaio" = "xyes"],
-  [AC_DEFINE([INKDISKAIO])]
 )
 
 #
