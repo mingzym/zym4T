@@ -727,7 +727,7 @@ CacheVC::openReadStartEarliest(int event, Event * e)
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
 
-  intptr_t err = ECACHE_NO_DOC;
+  int ret = 0;
   Doc *doc = NULL;
   cancel_trigger();
   set_io_not_in_progress();
