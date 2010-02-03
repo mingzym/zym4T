@@ -172,7 +172,7 @@ CacheVC::openReadChooseWriter(int event, Event * e)
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
 
-  int err = ECACHE_DOC_BUSY;
+  intptr_t err = ECACHE_DOC_BUSY;
   CacheVC *w = NULL;
 
   if (frag_type != CACHE_FRAG_TYPE_HTTP) {
@@ -184,7 +184,7 @@ CacheVC::openReadChooseWriter(int event, Event * e)
       return openReadStartHead(EVENT_IMMEDIATE, 0);
     }
     if (!w->closed) {
-      return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) - err);
+      return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) -err);
     }
     write_vc = w;
   }
@@ -287,10 +287,10 @@ CacheVC::openReadFromWriter(int event, Event * e)
     f.read_from_writer_called = 1;
   }
   cancel_trigger();
-  int err = ECACHE_DOC_BUSY;
+  intptr_t err = ECACHE_DOC_BUSY;
   DDebug("cache_read_agg", "%x: key: %X In openReadFromWriter", this, first_key.word(1));
 #ifndef READ_WHILE_WRITER
-  return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) - err);
+  return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) -err);
 #else
   if (_action.cancelled)
     return free_CacheVC(this);
@@ -727,7 +727,7 @@ CacheVC::openReadStartEarliest(int event, Event * e)
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
 
-  int ret = 0;
+  intptr_t err = ECACHE_NO_DOC;
   Doc *doc = NULL;
   cancel_trigger();
   set_io_not_in_progress();
@@ -930,10 +930,7 @@ Lrestart:
 int
 CacheVC::openReadStartHead(int event, Event * e)
 {
-  NOWARN_UNUSED(e);
-  NOWARN_UNUSED(event);
-
-  int err = ECACHE_NO_DOC;
+  intptr_t err = ECACHE_NO_DOC;
   Doc *doc = NULL;
   cancel_trigger();
   set_io_not_in_progress();

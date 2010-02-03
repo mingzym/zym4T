@@ -125,7 +125,7 @@ DynArray<struct lwpTable>arrayLwp(&default_lwpTable, 0);
 
 #define __p_type p_type         //ugly hack? - see resolv.h
 #define D(x) x                  /* for debugging */
-int f1, f2;
+intptr_t f1, f2;
 int framepointer = 0;
 int program_counter = 0;
 #endif  // linux check
@@ -899,7 +899,7 @@ CoreUtils::load_http_hdr(HTTPHdr * core_hdr, HTTPHdr * live_hdr)
   swizzle_heap->m_read_write_heap.m_ptr = NULL;
 
   // We'have one read-only string heap after marshalling
-  swizzle_heap->m_ronly_heap[0].m_heap_start = (char *) swizzle_heap->m_size;   // offset
+  swizzle_heap->m_ronly_heap[0].m_heap_start = (char *)(intptr_t)swizzle_heap->m_size;   // offset
   swizzle_heap->m_ronly_heap[0].m_ref_count_ptr.m_ptr = NULL;
 
   swizzle_heap->m_ronly_heap[1].m_heap_start = NULL;
