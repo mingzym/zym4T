@@ -33,7 +33,7 @@
  ***************************************************************************/
 
 #include "ink_sock.h"
-
+#include "ink_string.h"
 #include "NetworkUtilsRemote.h"
 #include "CoreAPI.h"
 #include "CoreAPIShared.h"
@@ -160,7 +160,7 @@ ts_connect()
   // setup Unix domain socket 
   memset(&client_sock, 0, sizeof(sockaddr_un));
   client_sock.sun_family = AF_UNIX;
-  strncpy(client_sock.sun_path, main_socket_path, sizeof(client_sock.sun_path));
+  ink_strncpy(client_sock.sun_path, main_socket_path, sizeof(client_sock.sun_path));
 #if (HOST_OS == darwin) || (HOST_OS == freebsd)
   sockaddr_len = sizeof(sockaddr_un);
 #else
@@ -185,7 +185,7 @@ ts_connect()
   // setup Unix domain socket
   memset(&client_event_sock, 0, sizeof(sockaddr_un));
   client_event_sock.sun_family = AF_UNIX;
-  strncpy(client_event_sock.sun_path, event_socket_path, sizeof(client_sock.sun_path));
+  ink_strncpy(client_event_sock.sun_path, event_socket_path, sizeof(client_sock.sun_path));
 #if (HOST_OS == darwin) || (HOST_OS == freebsd)
   sockaddr_len = sizeof(sockaddr_un);
 #else
