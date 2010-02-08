@@ -21,9 +21,10 @@
   limitations under the License.
  */
 
-#ifdef NON_MODULAR
 #include "P_Cache.h"
 #include "Show.h"
+
+#ifdef NON_MODULAR
 
 struct ShowCache:ShowCont
 {

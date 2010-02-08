@@ -21,7 +21,7 @@
   limitations under the License.
  */
 
-#include "ink_unused.h"      /* MAGIC_EDITING_TAG */
+#include "inktomi++.h"
 /*
  *
  * VIPConfig.cc
@@ -33,18 +33,6 @@
  * 
  */
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-
-#include <netinet/in.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 
 #include <sys/un.h>
 struct ifafilt;

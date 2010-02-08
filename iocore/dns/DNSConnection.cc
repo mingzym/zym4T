@@ -29,8 +29,6 @@
 **************************************************************************/
 
 #include "ink_unused.h" /* MAGIC_EDITING_TAG */
-#include "ink_platform.h"
-
 #include "P_DNS.h"
 #include "P_DNSConnection.h"
 

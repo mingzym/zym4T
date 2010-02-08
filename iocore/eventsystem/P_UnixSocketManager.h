@@ -31,6 +31,8 @@
 ****************************************************************************/
 #ifndef _P_UnixSocketManager_h_
 #define _P_UnixSocketManager_h_
+
+#include "inktomi++.h"
 #include "I_SocketManager.h"
 
 extern int monitor_read_activity;

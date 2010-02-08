@@ -21,12 +21,10 @@
   limitations under the License.
  */
 
-#include "ink_assert.h"
-
+#include "inktomi++.h"
 #include "P_RecCompatibility.h"
 #include "P_RecDefs.h"
 #include "P_RecUtils.h"
-#include <inktomi++.h>
 
 //-------------------------------------------------------------------------
 // RecFileOpenR

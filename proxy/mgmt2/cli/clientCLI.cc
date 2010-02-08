@@ -29,10 +29,7 @@
  * 
  ****************************************************************************/
 
-#include "ink_unused.h"      /* MAGIC_EDITING_TAG */
-
-#include "ink_args.h"
-#include "ink_sock.h"
+#include "inktomi++.h"
 #include "Tokenizer.h"
 #include "TextBuffer.h"
 #include "CliUtils.h"           /* cli_read_timeout(), cli_write_timeout(),GetTSDirectory() */

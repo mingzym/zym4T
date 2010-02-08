@@ -24,8 +24,7 @@
 #ifndef __P_UNIXNET_H__
 #define __P_UNIXNET_H__
 
-#include <stdarg.h>
-#include "List.h"
+#include "inktomi++.h"
 
 #define USE_EDGE_TRIGGER_EPOLL  1
 #define USE_EDGE_TRIGGER_KQUEUE  1

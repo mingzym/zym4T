@@ -21,7 +21,6 @@
   limitations under the License.
  */
 
-#include "ink_unused.h"    /* MAGIC_EDITING_TAG */
 /*
  *
  * Alarms.cc
@@ -32,8 +31,7 @@
  * 
  */
 
-#include "ink_platform.h"
-#include "Compatability.h"
+#include "inktomi++.h"
 #include "Main.h"
 #include "Alarms.h"
 #include "Diags.h"

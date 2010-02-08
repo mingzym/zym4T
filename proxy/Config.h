@@ -31,9 +31,9 @@
 #ifndef _Config_h
 #define _Config_h
 
+#include "inktomi++.h"
 #include "ProcessManager.h"
 #include "Error.h"
-#include "inktomi++.h"
 
 void *config_int_cb(void *data, void *value);
 void *config_long_long_cb(void *data, void *value);

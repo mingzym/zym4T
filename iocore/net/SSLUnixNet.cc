@@ -30,9 +30,9 @@
 
   
  ****************************************************************************/
+#include "ink_config.h"
+
 #ifdef HAVE_LIBSSL
-#include "ink_unused.h"   /* MAGIC_EDITING_TAG */
-#include <string.h>
 #include "P_Net.h"
 //
 // Global Data

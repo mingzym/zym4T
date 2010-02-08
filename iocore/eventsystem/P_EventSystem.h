@@ -31,6 +31,8 @@
 #ifndef _P_EventSystem_h
 #define _P_EventSystem_h
 
+#include "inktomi++.h"
+
 #include "I_EventSystem.h"
 
 #include "P_Thread.h"

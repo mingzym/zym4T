@@ -44,43 +44,25 @@
 #include "ink_apidefs.h"
 
 HostDBProcessor hostDBProcessor;
-int
-  HostDBProcessor::hostdb_strict_round_robin = 0;
-int
-  hostdb_enable = true;
-int
-  hostdb_migrate_on_demand = true;
-int
-  hostdb_cluster = false;
-int
-  hostdb_cluster_round_robin = false;
-int
-  hostdb_lookup_timeout = 120;
-int
-  hostdb_insert_timeout = 160;
-int
-  hostdb_re_dns_on_reload = false;
-int
-  hostdb_ttl_mode = TTL_OBEY;
-unsigned int
-  hostdb_current_interval = 0;
-unsigned int
-  hostdb_ip_stale_interval = HOST_DB_IP_STALE;
-unsigned int
-  hostdb_ip_timeout_interval = HOST_DB_IP_TIMEOUT;
-unsigned int
-  hostdb_ip_fail_timeout_interval = HOST_DB_IP_FAIL_TIMEOUT;
-unsigned int
-  hostdb_serve_stale_but_revalidate = 0;
-char
-  hostdb_filename[PATH_NAME_MAX + 1] = DEFAULT_HOST_DB_FILENAME;
-int
-  hostdb_size = DEFAULT_HOST_DB_SIZE;
+int HostDBProcessor::hostdb_strict_round_robin = 0;
+int hostdb_enable = true;
+int hostdb_migrate_on_demand = true;
+int hostdb_cluster = false;
+int hostdb_cluster_round_robin = false;
+int hostdb_lookup_timeout = 120;
+int hostdb_insert_timeout = 160;
+int hostdb_re_dns_on_reload = false;
+int hostdb_ttl_mode = TTL_OBEY;
+unsigned int hostdb_current_interval = 0;
+unsigned int hostdb_ip_stale_interval = HOST_DB_IP_STALE;
+unsigned int hostdb_ip_timeout_interval = HOST_DB_IP_TIMEOUT;
+unsigned int hostdb_ip_fail_timeout_interval = HOST_DB_IP_FAIL_TIMEOUT;
+unsigned int hostdb_serve_stale_but_revalidate = 0;
+char hostdb_filename[PATH_NAME_MAX + 1] = DEFAULT_HOST_DB_FILENAME;
+int hostdb_size = DEFAULT_HOST_DB_SIZE;
 //int hostdb_timestamp = 0;
-int
-  hostdb_sync_frequency = 60;
-int
-  hostdb_disable_reverse_lookup = 0;
+int hostdb_sync_frequency = 60;
+int hostdb_disable_reverse_lookup = 0;
 
 ClassAllocator<HostDBContinuation> hostDBContAllocator("hostDBContAllocator");
 

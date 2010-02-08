@@ -21,7 +21,10 @@
   limitations under the License.
  */
 
+#include "inktomi++.h"
+
 #ifdef NON_MODULAR
+
 #include "P_Net.h"
 #include "Show.h"
 

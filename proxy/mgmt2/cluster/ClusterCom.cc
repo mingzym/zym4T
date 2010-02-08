@@ -31,18 +31,12 @@
  * 
  */
 
-#include "ink_unused.h"    /* MAGIC_EDITING_TAG */
+#include "inktomi++.h"
 
-#include "ink_platform.h"
-#include "Compatability.h"
 #include "I_Version.h"
 
-#include "ink_string.h"
-#include "ink_sock.h"
 #include "TextBuffer.h"
 #include "MgmtSocket.h"
-
-#include "Diags.h"
 
 #include "Main.h"
 #include "ClusterCom.h"

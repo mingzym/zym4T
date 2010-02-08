@@ -21,6 +21,7 @@
   limitations under the License.
  */
 
+#include "ink_config.h"
 #include <iostream>
 #include <iomanip>
 #include <fstream>

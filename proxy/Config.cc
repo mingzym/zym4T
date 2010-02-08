@@ -21,14 +21,7 @@
   limitations under the License.
  */
 
-#include "ink_unused.h"    /* MAGIC_EDITING_TAG */
-/****************************************************************************
-
-  Config.cc
-
-  
-  ****************************************************************************/
-
+#include "inktomi++.h"
 #include "Config.h"
 #include "P_EventSystem.h"
 

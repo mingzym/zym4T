@@ -21,10 +21,7 @@
   limitations under the License.
  */
 
-#include "ink_inet.h"
-#include "Compatability.h"
-
-#include "ParseRules.h"
+#include "inktomi++.h"
 
 #if (HOST_OS == darwin)
 extern "C"

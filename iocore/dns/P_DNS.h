@@ -30,8 +30,8 @@
 #if !defined (_P_DNS_h_)
 #define _P_DNS_h_
 
-#include "I_DNS.h"
 #include "inktomi++.h"
+#include "I_DNS.h"
 #include "P_EventSystem.h"
 #include "I_Cache.h"
 #include "P_Net.h"

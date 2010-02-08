@@ -21,20 +21,10 @@
   limitations under the License.
  */
 
-#include <assert.h>
-#include <ctype.h>
+#include "inktomi++.h"
 #include <fcntl.h>
-#include <stdlib.h>
-#include <string.h>
-
-#include <unistd.h>
-
-#include "Compatability.h"
 #include "Bitops.h"
-#include "INK_MD5.h"
 #include "Regex.h"
-#include "Resource.h"
-#include "ink_assert.h"
 
 enum RENodeType
 {

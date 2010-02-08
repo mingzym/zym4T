@@ -29,12 +29,7 @@
  *
  ****************************************************************************/
 
-#include "ink_unused.h" /* MAGIC_EDITING_TAG */
-
-#include "ink_platform.h"
-#include "Compatability.h"
 #include "inktomi++.h"
-#include "ink_atomic.h"
 #include "Main.h"
 #include "BaseRecords.h"
 #include "WebHttp.h"

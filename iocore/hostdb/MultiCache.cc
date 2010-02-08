@@ -28,8 +28,7 @@
   
  ****************************************************************************/
 
-#include "ink_unused.h"     /* MAGIC_EDITING_TAG */
-#include <string.h>
+#include "inktomi++.h"
 
 #ifdef NON_MODULAR
 #include "P_HostDB.h"

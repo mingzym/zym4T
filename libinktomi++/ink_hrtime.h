@@ -31,6 +31,7 @@
 #if !defined (_ink_hrtime_h_)
 #define _ink_hrtime_h_
 
+#include "ink_config.h"
 #include "ink_assert.h"
 #include "Compatability.h"
 

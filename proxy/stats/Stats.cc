@@ -24,6 +24,7 @@
 
 
 #define _s_impl
+#include "ink_config.h"
 #include "Stats.h"
 #include "P_EventSystem.h"
 

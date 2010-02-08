@@ -30,6 +30,8 @@
 #ifndef __P_UNIXPOLLDESCRIPTOR_H__
 #define __P_UNIXPOLLDESCRIPTOR_H__
 
+#include "inktomi++.h"
+
 #ifdef USE_LIBEV
 #include "ev.h"
 #endif

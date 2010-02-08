@@ -21,20 +21,15 @@
   limitations under the License.
  */
 
+
+#include "inktomi++.h"
 #if (HOST_OS == linux) || (HOST_OS == freebsd) || (HOST_OS == darwin)
 
 #include "SysAPI.h"
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/types.h>
 #include <unistd.h>
 #include <sys/wait.h>
-#include <sys/time.h>
-#include <stdarg.h>
-#include <string.h>
 #include <ink_string.h>
 #include <regex.h>
-#include <time.h>
 #include <grp.h>
 
 #include <ctype.h>

@@ -30,9 +30,6 @@
   
  ****************************************************************************/
 
-#include "ink_unused.h"       /* MAGIC_EDITING_TAG */
-
-void deinitSubAgent();
 
 
 #include "inktomi++.h"
@@ -205,6 +202,7 @@ extern int test_net_processor();
 extern int run_TestHook();
 //extern void run_SimpleHttp();
 #endif
+void deinitSubAgent();
 
 Version version = {
   {CACHE_DB_MAJOR_VERSION, CACHE_DB_MINOR_VERSION},     // cacheDB

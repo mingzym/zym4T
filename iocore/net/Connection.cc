@@ -29,7 +29,7 @@
 **************************************************************************/
 
 #include "ink_unused.h"   /* MAGIC_EDITING_TAG */
-#include "ink_platform.h"
+#include "inktomi++.h"
 
 #include "P_Net.h"
 

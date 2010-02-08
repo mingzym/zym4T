@@ -91,6 +91,8 @@
 /* modify the "note" in process_core */
 /* Document properly */
 
+#include "ink_config.h"
+
 #if defined(sparc)
 // We need procfs data strucutures and they
 //   don't support large files

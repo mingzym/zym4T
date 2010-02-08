@@ -27,10 +27,7 @@
  This file implements the LogConfig object.
  
  ***************************************************************************/
-#include "ink_unused.h"
-
-#include <stdio.h>
-#include <string.h>
+#include "inktomi++.h"
 
 #ifdef HAVE_SYS_PARAM_H
 #include <sys/param.h>

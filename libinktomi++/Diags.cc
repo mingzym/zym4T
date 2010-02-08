@@ -34,8 +34,8 @@
   
  ****************************************************************************/
 
+#include "ink_config.h"
 #include "ink_unused.h"
-
 #include "ink_error.h"
 #include "ink_assert.h"
 #include "ink_time.h"
