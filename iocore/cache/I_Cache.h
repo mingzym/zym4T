@@ -79,8 +79,9 @@ struct CacheProcessor:public Processor
                             time_t pin_in_cache = (time_t) 0,
                             char *hostname = 0, int host_len = 0);
   inkcoreapi Action *remove(Continuation *cont, CacheKey *key,
+                            CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, 
                             bool rm_user_agents = true, bool rm_link = false,
-                            CacheFragType frag_type = CACHE_FRAG_TYPE_NONE, char *hostname = 0, int host_len = 0);
+                            char *hostname = 0, int host_len = 0);
   Action *scan(Continuation *cont, char *hostname = 0, int host_len = 0, int KB_per_second = 2500);
 #ifdef HTTP_CACHE
   Action *lookup(Continuation *cont, URL *url, bool local_only = false,

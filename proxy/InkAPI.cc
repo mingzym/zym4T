@@ -7070,7 +7070,7 @@ INKCacheRemove(INKCont contp, INKCacheKey key)
   CacheInfo *info = (CacheInfo *) key;
   INKContInternal *i = (INKContInternal *) contp;
   return (INKAction)
-    cacheProcessor.remove(i, &info->cache_key, true, false, info->frag_type, info->hostname, info->len);
+    cacheProcessor.remove(i, &info->cache_key, info->frag_type, true, false, info->hostname, info->len);
 }
 
 INKAction

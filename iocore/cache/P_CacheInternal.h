@@ -178,19 +178,15 @@ extern RecRawStatBlock *cache_rsb;
 	RecIncrRawStat(cache_rsb, mutex->thread_holding, (int) (x), -1); \
 	RecIncrRawStat(part->cache_part->part_rsb, mutex->thread_holding, (int) (x), -1);
 
-
 #define CACHE_PART_SUM_DYN_STAT(x,y) \
-  RecIncrRawStat(part->cache_part->part_rsb, mutex->thread_holding, (int) (x), (int) y);
-
+        RecIncrRawStat(part->cache_part->part_rsb, mutex->thread_holding, (int) (x), (int) y);
 
 #define CACHE_SUM_DYN_STAT(x, y) \
 	RecIncrRawStat(cache_rsb, mutex->thread_holding, (int) (x), (int) (y)); \
 	RecIncrRawStat(part->cache_part->part_rsb, mutex->thread_holding, (int) (x), (int) (y));
 
-
 #define GLOBAL_CACHE_SUM_GLOBAL_DYN_STAT(x, y) \
 	RecIncrGlobalRawStatSum(cache_rsb,(x),(y))
-
 
 #define CACHE_SUM_GLOBAL_DYN_STAT(x, y) \
 	RecIncrGlobalRawStatSum(cache_rsb,(x),(y)) \
@@ -300,10 +296,9 @@ struct CacheVC:CacheVConnection
 
   int updateVector(int event, Event *e);
   int updateReadDone(int event, Event *e);
-
   int updateVecWrite(int event, Event *e);
-  int removeReadDone(int event, Event *e);
-  int removeAbortWriter(int event, Event *e);
+
+  int removeEvent(int event, Event *e);
 
   int linkWrite(int event, Event *e);
   int derefRead(int event, Event *e);
@@ -448,6 +443,7 @@ struct CacheVC:CacheVConnection
 #endif
       unsigned int update:1;
       unsigned int remove:1;
+      unsigned int remove_aborted_writers:1;
       unsigned int open_read_timeout:1; // UNUSED
       unsigned int data_done:1;
       unsigned int read_from_writer_called:1;
@@ -915,8 +911,9 @@ struct Cache
                                 CacheFragType frag_type, bool overwrite = false,
                                 time_t pin_in_cache = (time_t) 0, char *hostname = 0, int host_len = 0);
   inkcoreapi Action *remove(Continuation *cont, CacheKey *key,
+                            CacheFragType type = CACHE_FRAG_TYPE_HTTP, 
                             bool user_agents = true, bool link = false,
-                            CacheFragType type = CACHE_FRAG_TYPE_HTTP, char *hostname = 0, int host_len = 0);
+                            char *hostname = 0, int host_len = 0);
   Action *scan(Continuation *cont, char *hostname = 0, int host_len = 0, int KB_per_second = 2500);
 
 #ifdef HTTP_CACHE
@@ -1134,8 +1131,8 @@ CacheProcessor::open_write_buffer(Continuation *cont, MIOBuffer *buf,
 }
 
 inline Action *
-CacheProcessor::remove(Continuation *cont, CacheKey *key,
-                       bool rm_user_agents, bool rm_link, CacheFragType frag_type, char *hostname, int host_len)
+CacheProcessor::remove(Continuation *cont, CacheKey *key, CacheFragType frag_type,
+                       bool rm_user_agents, bool rm_link, char *hostname, int host_len)
 {
 #ifdef CLUSTER_CACHE
   if (cache_clustering_enabled > 0) {
@@ -1146,7 +1143,7 @@ CacheProcessor::remove(Continuation *cont, CacheKey *key,
     }
   }
 #endif
-  return caches[frag_type]->remove(cont, key, rm_user_agents, rm_link, frag_type, hostname, host_len);
+  return caches[frag_type]->remove(cont, key, frag_type, rm_user_agents, rm_link, hostname, host_len);
 }
 
 inline Action *
@@ -1168,8 +1165,6 @@ CacheProcessor::lookup(Continuation *cont, URL *url, bool local_only, CacheFragT
   return lookup(cont, &md5, local_only, frag_type, (char *) hostname, host_len);
 }
 
-
-
 inline Action *
 CacheProcessor::open_read_buffer(Continuation *cont, MIOBuffer *buf,
                                  URL *url, CacheHTTPHdr *request, CacheLookupHttpConfig *params, CacheFragType type)
@@ -1183,8 +1178,6 @@ CacheProcessor::open_read_buffer(Continuation *cont, MIOBuffer *buf,
 #endif
   return caches[type]->open_read(cont, url, request, params, type);
 }
-
-
 
 inline Action *
 CacheProcessor::open_write_buffer(Continuation * cont, MIOBuffer * buf, URL * url,
@@ -1201,7 +1194,6 @@ CacheProcessor::open_write_buffer(Continuation * cont, MIOBuffer * buf, URL * ur
 }
 
 #endif
-
 
 
 #ifdef CLUSTER_CACHE
@@ -1290,14 +1282,5 @@ local_cache()
 {
   return theCache;
 }
-
-inline int
-cache_history_dump()
-{
-  return 0;
-}
-
-
-
 
 #endif /* _P_CACHE_INTERNAL_H__ */

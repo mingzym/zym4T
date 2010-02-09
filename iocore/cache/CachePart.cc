@@ -222,7 +222,7 @@ CacheVC::scanObject(int event, Event * e)
         ink_debug_assert(hostinfo_copied);
         SET_HANDLER(&CacheVC::scanRemoveDone);
         // force remove even if there is a writer
-        cacheProcessor.remove(this, &doc->first_key, true, false, CACHE_FRAG_TYPE_HTTP, (char *) hname, hlen);
+        cacheProcessor.remove(this, &doc->first_key, CACHE_FRAG_TYPE_HTTP, true, false, (char *) hname, hlen);
         return EVENT_CONT;
       } else {
         offset = (char *) doc - buf->data();

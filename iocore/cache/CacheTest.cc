@@ -313,12 +313,32 @@ EXCLUSIVE_REGRESSION_TEST(cache)(RegressionTest *t, int atype, int *pstatus) {
   read_test.expect_event = VC_EVENT_READ_COMPLETE;
   read_test.total_size = 100;
   read_test.key = write_test.key;
+
+  CACHE_SM(t, remove_test, { cacheProcessor.remove(this, &key); } );
+  remove_test.expect_event = CACHE_EVENT_REMOVE;
+  remove_test.key = write_test.key;
+
+  CACHE_SM(t, lookup_fail_test, { cacheProcessor.lookup(this, &key); } );
+  lookup_fail_test.expect_event = CACHE_EVENT_LOOKUP_FAILED;
+  lookup_fail_test.key = write_test.key;
+
+  CACHE_SM(t, read_fail_test, { cacheProcessor.open_read(this, &key); } );
+  read_fail_test.expect_event = CACHE_EVENT_OPEN_READ_FAILED;
+  read_fail_test.key = write_test.key;
   
+  CACHE_SM(t, remove_fail_test, { cacheProcessor.remove(this, &key); } );
+  remove_fail_test.expect_event = CACHE_EVENT_REMOVE_FAILED;
+  rand_CacheKey(&remove_fail_test.key, thread->mutex);
+
   r_sequential(
     t,
     write_test.clone(),
     lookup_test.clone(),
     read_test.clone(),
+    remove_test.clone(),
+    lookup_fail_test.clone(),
+    read_fail_test.clone(),
+    remove_fail_test.clone(),
     NULL
     )->run(pstatus);
   return;

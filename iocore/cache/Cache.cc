@@ -25,6 +25,7 @@
 
 
 #include "P_Cache.h"
+#include "P_CacheTest.h"
 
 // Cache Inspector and State Pages
 #ifdef NON_MODULAR
@@ -253,14 +254,14 @@ CacheVC::do_io_close(int alerrno)
 {
   ink_debug_assert(mutex->thread_holding == this_ethread());
   closed = (alerrno == -1) ? 1 : -1;    // Stupid default arguments
-  Debug("cache_close", "do_io_close %lX %d %d", (long) this, alerrno, closed);
+  DDebug("cache_close", "do_io_close %lX %d %d", (long) this, alerrno, closed);
   die();
 }
 
 void
 CacheVC::reenable(VIO *avio)
 {
-  Debug("cache_reenable", "reenable %lX", (long) this);
+  DDebug("cache_reenable", "reenable %lX", (long) this);
   (void) avio;
   ink_assert(avio->mutex->thread_holding);
   if (!trigger) {
@@ -278,7 +279,7 @@ CacheVC::reenable(VIO *avio)
 void
 CacheVC::reenable_re(VIO *avio)
 {
-  Debug("cache_reenable", "reenable_re %lX", (long) this);
+  DDebug("cache_reenable", "reenable_re %lX", (long) this);
   (void) avio;
   ink_assert(avio->mutex->thread_holding);
   if (!trigger) {
@@ -1980,115 +1981,87 @@ Cache::lookup(Continuation *cont, CacheURL *url, CacheFragType type)
 }
 #endif
 
-// called to abort another writer so that
-// remove can proceed.
-// checks if there is another writer - if another
-// writer found its write is aborted
-
-// the result of this function call is that -
-// either the other writer (if it exists) is
-// aborted or the cacheVC succeeds in 
-// open_write
-
 int
-CacheVC::removeAbortWriter(int event, Event *e)
+CacheVC::removeEvent(int event, Event *e)
 {
   NOWARN_UNUSED(e);
   NOWARN_UNUSED(event);
-  int ow_ret;
-  cancel_trigger();
-  if (_action.cancelled)
-    return free_CacheVC(this);
 
-  CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
-  if (!lock)
-    VC_SCHED_LOCK_RETRY();
-
-  // if there are other writers, we still want this remove to go through.
-  // If we are the first writer, don't allow other writers. Otherwise,
-  // we to put the vector in the open directory entry in case there are
-  // new writers.
-  if ((ow_ret = part->open_write(this, true, 1))) {
-    // writer  exists
-    ink_assert(od = part->open_read(&key));
-    od->dont_update_directory = 1;
-    od = NULL;
-  } else {
-    od->dont_update_directory = 1;
-  }
-
-  SET_HANDLER(&CacheVC::removeReadDone);
-  return removeReadDone(EVENT_IMMEDIATE, 0);
-
-}
-
-// remove code
-
-int
-CacheVC::removeReadDone(int event, Event *e)
-{
-  NOWARN_UNUSED(e);
-  NOWARN_UNUSED(event);
   cancel_trigger();
   set_io_not_in_progress();
-  MUTEX_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
-  if (!lock)
-    VC_SCHED_LOCK_RETRY();
-
-  if (_action.cancelled) {
+  {
+    MUTEX_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
+    if (!lock)
+      VC_SCHED_LOCK_RETRY();
+    if (_action.cancelled) {
+      if (od) {
+        part->close_write(this);
+        od = 0;
+      }
+      goto Lfree;
+    }
+    if (!f.remove_aborted_writers) {
+      if (part->open_write(this, true, 1)) {
+        // writer  exists
+        ink_assert(od = part->open_read(&key));
+        od->dont_update_directory = 1;
+        od = NULL;
+      } else {
+        od->dont_update_directory = 1;
+      }
+      f.remove_aborted_writers = 1;
+    }
+  Lread:
+    if (!buf)
+      goto Lcollision;
+    if (!dir_valid(part, &dir)) {
+      last_collision = NULL;
+      goto Lcollision;
+    }
+    // check read completed correct FIXME: remove bad parts
+    if ((int) io.aio_result != (int) io.aiocb.aio_nbytes)
+      goto Ldone;
+    {
+      // verify that this is our document
+      Doc *doc = (Doc *) buf->data();
+      /* should be first_key not key..right?? */
+      if (doc->first_key == key) {
+        ink_assert(doc->magic == DOC_MAGIC);
+        if (dir_delete(&key, part, &dir) > 0) {
+          if (od)
+            part->close_write(this);
+          od = NULL;
+          goto Lremoved;
+        }
+        goto Ldone;
+      }
+    }
+  Lcollision:
+    // check for collision
+    if (dir_probe(&key, part, &dir, &last_collision) > 0) {
+      int ret = do_read_call(&key);
+      if (ret == EVENT_RETURN)
+        goto Lread;
+      return ret;
+    }
+  Ldone:
+    CACHE_INCREMENT_DYN_STAT(cache_remove_failure_stat);
     if (od)
       part->close_write(this);
-    od = NULL;
-    return free_CacheVC(this);
   }
-
-  if (!buf)
-    goto Lcollision;
-
-  if (!dir_valid(part, &dir)) {
-    last_collision = NULL;
-    goto Lcollision;
-  }
-  // check read completed correct FIXME: remove bad parts
-  if ((int) io.aio_result != (int) io.aiocb.aio_nbytes)
-    goto Ldone;
-  {
-    // verify that this is our document
-    Doc *doc = (Doc *) buf->data();
-    /* should be first_key not key..right?? */
-    if (doc->first_key == key) {
-      ink_assert(doc->magic == DOC_MAGIC);
-      if (dir_delete(&key, part, &dir) > 0) {
-        if (od)
-          part->close_write(this);
-        _action.continuation->handleEvent(CACHE_EVENT_REMOVE, 0);
-        od = NULL;
-        return free_CacheVC(this);
-      }
-      goto Ldone;
-    }
-  }
-Lcollision:
-  // check for collision
-  if (dir_probe(&key, part, &dir, &last_collision) > 0) {
-    int ret = do_read_call(&key);
-    if (ret == EVENT_RETURN)
-      goto Lcallreturn;
-    return ret;
-  }
-Ldone:
-  CACHE_INCREMENT_DYN_STAT(cache_remove_failure_stat);
-  if (od)
-    part->close_write(this);
+  ink_debug_assert(!part || this_ethread() != part->mutex->thread_holding);
   _action.continuation->handleEvent(CACHE_EVENT_REMOVE_FAILED, (void *) -ECACHE_NO_DOC);
+  goto Lfree;
+Lremoved:
+  _action.continuation->handleEvent(CACHE_EVENT_REMOVE, 0);
+Lfree:
   return free_CacheVC(this);
-Lcallreturn:
-  return handleEvent(AIO_EVENT_DONE, 0); // hopefully a tail call
 }
 
 Action *
-Cache::remove(Continuation *cont, CacheKey *key, bool user_agents,
-              bool link, CacheFragType type, char *hostname, int host_len)
+Cache::remove(Continuation *cont, CacheKey *key, CacheFragType type, 
+              bool user_agents, bool link, 
+              char *hostname, int host_len)
 {
   NOWARN_UNUSED(user_agents);
   NOWARN_UNUSED(link);
@@ -2123,9 +2096,8 @@ Cache::remove(Continuation *cont, CacheKey *key, bool user_agents,
   c->dir = result;
   c->f.remove = 1;
 
-  SET_CONTINUATION_HANDLER(c, &CacheVC::removeAbortWriter);
-  //Action *ret_action = ACTION_RESULT_DONE;
-  int ret = c->removeAbortWriter(EVENT_IMMEDIATE, 0);
+  SET_CONTINUATION_HANDLER(c, &CacheVC::removeEvent);
+  int ret = c->removeEvent(EVENT_IMMEDIATE, 0);
   if (ret == EVENT_DONE)
     return ACTION_RESULT_DONE;
   else
@@ -2140,7 +2112,7 @@ Cache::remove(Continuation *cont, CacheURL *url, CacheFragType type)
   url->MD5_get(&md5);
   int host_len = 0;
   const char *hostname = url->host_get(&host_len);
-  return remove(cont, &md5, true, false, type, (char *) hostname, host_len);
+  return remove(cont, &md5, type, true, false, (char *) hostname, host_len);
 }
 #endif
 
@@ -2154,7 +2126,6 @@ CacheVConnection::CacheVConnection()
 void
 cplist_init()
 {
-
   int i;
   unsigned int j;
   cp_list_len = 0;
@@ -2548,236 +2519,66 @@ Cache::key_to_part(CacheKey *key, char *hostname, int host_len)
     return host_rec->parts[0];
 }
 
+static void reg_int(const char *str, int stat, RecRawStatBlock *rsb, const char *prefix) {
+  char stat_str[256];
+  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, str);
+  RecRegisterRawStat(rsb, RECT_PROCESS,
+                     stat_str, RECD_INT, RECP_NON_PERSISTENT, stat, RecRawStatSyncSum);
+  DOCACHE_CLEAR_DYN_STAT(stat)
+}
+#define REG_INT(_str, _stat) reg_int(_str, (int)_stat, rsb, prefix)
 
 // Register Stats
 void
 register_cache_stats(RecRawStatBlock *rsb, const char *prefix)
 {
-
   char stat_str[256];
 
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "bytes_used");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_bytes_used_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_bytes_used_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "bytes_total");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_bytes_total_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_bytes_total_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "ram_cache.bytes_used");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_ram_cache_bytes_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_ram_cache_bytes_stat);
-
+  REG_INT("bytes_used", cache_bytes_used_stat);
+  REG_INT("bytes_total", cache_bytes_total_stat);
   snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "ram_cache.total_bytes");
   RecRegisterRawStat(rsb, RECT_PROCESS,
                      stat_str, RECD_INT, RECP_NULL, (int) cache_ram_cache_bytes_total_stat, RecRawStatSyncSum);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "ram_cache.misses");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_ram_cache_misses_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_ram_cache_misses_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "ram_cache.hits");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_ram_cache_hits_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_ram_cache_hits_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "pread_count");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_pread_count_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_pread_count_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "percent_full");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_percent_full_stat, RecRawStatSyncSum);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "lookup.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_lookup_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_lookup_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "lookup.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_lookup_success_stat, RecRawStatSyncSum);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "lookup.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_lookup_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_lookup_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "read.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_read_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_read_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "read.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_read_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_read_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "read.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_read_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_read_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "write.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_write_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_write_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "write.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_write_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_write_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "write.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_write_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_write_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "write.backlog.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str,
-                     RECD_INT, RECP_NON_PERSISTENT, (int) cache_write_backlog_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_write_backlog_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "update.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_update_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_update_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "update.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_update_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_update_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "update.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_update_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_update_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "remove.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_remove_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_remove_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "remove.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_remove_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_remove_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "remove.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_remove_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_remove_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "evacuate.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_evacuate_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_evacuate_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "evacuate.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_evacuate_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_evacuate_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "evacuate.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_evacuate_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_evacuate_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "scan.active");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_scan_active_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_scan_active_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "scan.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_scan_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_scan_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "scan.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_scan_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_scan_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "direntries.total");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_direntries_total_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_direntries_total_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "direntries.used");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_direntries_used_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_direntries_used_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "directory_collision");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str,
-                     RECD_INT, RECP_NON_PERSISTENT, (int) cache_directory_collision_count_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_directory_collision_count_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "frags_per_doc.1");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str,
-                     RECD_INT, RECP_NON_PERSISTENT, (int) cache_single_fragment_document_count_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_single_fragment_document_count_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "frags_per_doc.2");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str,
-                     RECD_INT, RECP_NON_PERSISTENT, (int) cache_two_fragment_document_count_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_two_fragment_document_count_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "frags_per_doc.3+");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str,
-                     RECD_INT, RECP_NON_PERSISTENT,
-                     (int) cache_three_plus_plus_fragment_document_count_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_three_plus_plus_fragment_document_count_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "read_busy.success");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_read_busy_success_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_read_busy_success_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "read_busy.failure");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_read_busy_failure_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_read_busy_failure_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "write_bytes_stat");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_write_bytes_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_write_bytes_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "vector_marshals");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_hdr_vector_marshal_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_hdr_vector_marshal_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "hdr_marshals");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_hdr_marshal_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_hdr_marshal_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "hdr_marshal_bytes");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_hdr_marshal_bytes_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_hdr_marshal_bytes_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "gc_bytes_evacuated");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_gc_bytes_evacuated_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_gc_bytes_evacuated_stat);
-
-  snprintf(stat_str, sizeof(stat_str), "%s.%s", prefix, "gc_frags_evacuated");
-  RecRegisterRawStat(rsb, RECT_PROCESS,
-                     stat_str, RECD_INT, RECP_NON_PERSISTENT, (int) cache_gc_frags_evacuated_stat, RecRawStatSyncSum);
-  DOCACHE_CLEAR_DYN_STAT(cache_gc_frags_evacuated_stat);
+  REG_INT("ram_cache.bytes_used", cache_ram_cache_bytes_stat);
+  REG_INT("ram_cache.hits", cache_ram_cache_hits_stat);
+  REG_INT("pread_count", cache_pread_count_stat);
+  REG_INT("percent_full", cache_percent_full_stat);
+  REG_INT("lookup.active", cache_lookup_active_stat);
+  REG_INT("lookup.success", cache_lookup_success_stat);
+  REG_INT("lookup.failure", cache_lookup_failure_stat);
+  REG_INT("read.active", cache_read_active_stat);
+  REG_INT("read.success", cache_read_success_stat);
+  REG_INT("read.failure", cache_read_failure_stat);
+  REG_INT("write.active", cache_write_active_stat);
+  REG_INT("write.success", cache_write_success_stat);
+  REG_INT("write.failure", cache_write_failure_stat);
+  REG_INT("write.backlog.failure", cache_write_backlog_failure_stat);
+  REG_INT("update.active", cache_update_active_stat);
+  REG_INT("update.success", cache_update_success_stat);
+  REG_INT("update.failure", cache_update_failure_stat);
+  REG_INT("remove.active", cache_remove_active_stat);
+  REG_INT("remove.success", cache_remove_success_stat);
+  REG_INT("remove.failure", cache_remove_failure_stat);
+  REG_INT("evacuate.active", cache_evacuate_active_stat);
+  REG_INT("evacuate.success", cache_evacuate_success_stat);
+  REG_INT("evacuate.failure", cache_evacuate_failure_stat);
+  REG_INT("scan.active", cache_scan_active_stat);
+  REG_INT("scan.success", cache_scan_success_stat);
+  REG_INT("scan.failure", cache_scan_failure_stat);
+  REG_INT("direntries.total", cache_direntries_total_stat);
+  REG_INT("direntries.used", cache_direntries_used_stat);
+  REG_INT("directory_collision", cache_directory_collision_count_stat);
+  REG_INT("frags_per_doc.1", cache_single_fragment_document_count_stat);
+  REG_INT("frags_per_doc.2", cache_two_fragment_document_count_stat);
+  REG_INT("frags_per_doc.3+", cache_three_plus_plus_fragment_document_count_stat);
+  REG_INT("read_busy.success", cache_read_busy_success_stat);
+  REG_INT("read_busy.failure", cache_read_busy_failure_stat);
+  REG_INT("write_bytes_stat", cache_write_bytes_stat);
+  REG_INT("vector_marshals", cache_hdr_vector_marshal_stat);
+  REG_INT("hdr_marshals", cache_hdr_marshal_stat);
+  REG_INT("hdr_marshal_bytes", cache_hdr_marshal_bytes_stat);
+  REG_INT("gc_bytes_evacuated", cache_gc_bytes_evacuated_stat);
+  REG_INT("gc_frags_evacuated", cache_gc_frags_evacuated_stat);
 }
 
 
@@ -3013,7 +2814,7 @@ CacheProcessor::open_write(Continuation *cont, int expected_size, URL *url,
       sm->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) vc);
       return ACTION_RESULT_DONE;
     } else {
-      Debug("cache_plugin", "[CacheProcessor::open_write] Error: NewCacheVC not set");
+      DDebug("cache_plugin", "[CacheProcessor::open_write] Error: NewCacheVC not set");
       sm->handleEvent(CACHE_EVENT_OPEN_WRITE_FAILED, (void *) -ECACHE_WRITE_FAIL);
       return ACTION_RESULT_DONE;
     }
@@ -3032,7 +2833,7 @@ CacheProcessor::remove(Continuation *cont, URL *url, CacheFragType frag_type)
   }
 #endif
   if (cache_global_hooks != NULL && cache_global_hooks->hooks_set > 0) {
-    Debug("cache_plugin", "[CacheProcessor::remove] Cache hooks are set");
+    DDebug("cache_plugin", "[CacheProcessor::remove] Cache hooks are set");
     APIHook *cache_lookup = cache_global_hooks->get(INK_CACHE_PLUGIN_HOOK);
     if (cache_lookup != NULL) {
       NewCacheVC *vc = NewCacheVC::alloc(cont, url, NULL);
