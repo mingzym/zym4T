@@ -12,7 +12,7 @@
 # -----------------------------------------------------------------------------
 # 1. INITIALIZATION
 
-AC_INIT([Traffic Server], [2.0.0], [trafficserver-dev@incubator.apache.org], [trafficserver])
+AC_INIT([Apache Traffic Server], [2.0.0-alpha], [trafficserver-dev@incubator.apache.org], [trafficserver])
 AC_PREREQ([2.59])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall -Werror foreign no-installinfo no-installman 1.9.2])
@@ -254,6 +254,30 @@ AC_ARG_WITH([architecture],
 AS_IF([test "x$with_architecture" = "xyes"], [echo "--with-architecture needs an argument"; AS_EXIT()]
 )
 
+
+#
+# DB support. By default, we require sqlite3, but we also optionally support BDB. You can
+# disable / flip these behaviors with these flags.
+#
+AC_MSG_CHECKING([whether to enable sqlite3])
+AC_ARG_WITH([sqlite3],
+  [AS_HELP_STRING([--without-sqlite3],[disable support for sqlite3 [default=no]])],
+  [],
+  [with_sqlite3=yes]
+)
+if test "x${with_sqlite3}" = "x"; then
+   with_sqlite3="yes"
+fi
+AC_MSG_RESULT([$with_sqlite3])
+          
+AC_MSG_CHECKING([whether to enable libdb])
+AC_ARG_WITH([libdb],
+  [AS_HELP_STRING([--with-libdb],[compile with libdb support [default=no]])],
+  [with_libdb=$withval],
+  [with_libdb=no]
+)
+AC_MSG_RESULT([$with_libdb])
+
 # Berkeley DB (bdb)
 AC_ARG_WITH([bdb],
    [AC_HELP_STRING([--with-bdb=DIR],[Berkeley DB installation directory])],
@@ -266,6 +290,7 @@ if test "x$with_bdb" != "xno" ; then
    PATH_BDB_LIB="$with_bdb/lib"
 fi
 
+          
 #
 # Installation directories
 #
@@ -538,61 +563,64 @@ AC_CHECK_LIB([expat],[XML_SetUserData],
   [$LIBTHREAD]
 )
 
-# Berkeley DB check: 
-# TODO: Better checking for versions/directories similar to TCL
-ts_have_db=0
-save_LDFLAGS="$LDFLAGS"
-save_CPPFLAGS="$CPPFLAGS"
-if test "x$with_bdb" != "xno" ; then
-  case $host_os in
-    solaris*)
-      LDFLAGS="$LDFLAGS -L$PATH_BDB_LIB -R$PATH_BDB_LIB" 
-      CPPFLAGS="$CPPFLAGS -I$PATH_BDB_INC"
-      ;;
-    *)         
-      LDFLAGS="$LDFLAGS -L$PATH_BDB_LIB" 
-      CPPFLAGS="$CPPFLAGS -I$PATH_BDB_INC"
-      ;;
-  esac
+if test "x${with_sqlite3}" == "xyes"; then
+  AC_CHECK_LIB([sqlite3], [sqlite3_open], 
+    [AC_SUBST([LIBSQLITE3], ["-lsqlite3"])
+    ],
+    [AC_MSG_FAILURE([check for sqlite3 failed. Have you installed sqlite3-devel?])],
+  )
 fi
 
-AC_CHECK_LIB([db],[__db_open],
-  [LIBDB="-ldb"
 
-   ts_have_db=1
-  ],
-   [AC_MSG_WARN([check for libdb failed. Have you installed Berkeley DB e.g. BerkeleyDB.4.7?])
-   LDFLAGS="$save_LDFLAGS"
-   CPPFLAGS="$save_CPPFLAGS"
-  ]
-)
+if test "x${with_libdb}" == "xyes"; then
+  # Berkeley DB check: 
+  # TODO: Better checking for versions/directories similar to TCL
+  ts_have_db=0
+  save_LDFLAGS="$LDFLAGS"
+  save_CPPFLAGS="$CPPFLAGS"
+  if test "x$with_bdb" != "xno" ; then
+    case $host_os in
+      solaris*)
+        LDFLAGS="$LDFLAGS -L$PATH_BDB_LIB -R$PATH_BDB_LIB" 
+        CPPFLAGS="$CPPFLAGS -I$PATH_BDB_INC"
+        ;;
+      *)         
+        LDFLAGS="$LDFLAGS -L$PATH_BDB_LIB" 
+        CPPFLAGS="$CPPFLAGS -I$PATH_BDB_INC"
+        ;;
+    esac
+  fi
 
+  AC_CHECK_LIB([db],[__db_open],
+    [LIBDB="-ldb"
+     ts_have_db=1
+    ],
+     [AC_MSG_WARN([check for libdb failed. Have you installed Berkeley DB e.g. BerkeleyDB.4.7?])
+     LDFLAGS="$save_LDFLAGS"
+     CPPFLAGS="$save_CPPFLAGS"
+    ]
+  )
 
-AC_CHECK_LIB([db],[__db185_open],
-  [LIBDB="-ldb"
-   ts_have_db=1
-  ],
-   [AC_MSG_WARN([check for libdb failed. Have you installed db4-devel?])]
-)
+  AC_CHECK_LIB([db],[__db185_open],
+    [LIBDB="-ldb"
+     ts_have_db=1
+    ],
+    [AC_MSG_WARN([check for libdb failed. Have you installed db4-devel?])]
+  )
 
-AC_CHECK_LIB([db],[__db_open],
-  [LIBDB="-ldb"
-   ts_have_db=1
-  ],
-   [AC_MSG_WARN([check for libdb failed. Have you installed Berkeley DB devel pkg?])]
-)
+  AC_CHECK_LIB([c],[dbopen],
+      [LIBDB=""
+      ts_have_db=1
+      ])
+  AC_SUBST([LIBDB])
 
-AC_CHECK_LIB([c],[dbopen],
-  [LIBDB=""
-  ts_have_db=1
-  ])
-AC_SUBST([LIBDB])
- 
-if test "$ts_have_db" = "0"; then
+  if test "$ts_have_db" = "0"; then
     AC_MSG_FAILURE([No DB interface found, try specifying --with-bdb=<Berkeley DB DIR>])
+  fi
 fi
 
 AC_CHECK_FUNCS([clock_gettime kqueue epoll_ctl posix_memalign lrand48_r srand48_r eventfd port_create])
+
 
 AC_CHECK_LIB([pcre], [pcre_exec], 
   [AC_SUBST([LIBPCRE],["-lpcre"])],
@@ -654,18 +682,6 @@ if test "$have_union_semun" = "0"; then
 fi
 
 
-AC_MSG_NOTICE([Build using CC=$CC])
-AC_MSG_NOTICE([Build using CXX=$CXX])
-AC_MSG_NOTICE([Build using CPP=$CPP])
-AC_MSG_NOTICE([Build using CCAS=$CCAS])
-AC_MSG_NOTICE([Build using CFLAGS=$CFLAGS])
-AC_MSG_NOTICE([Build using CXXFLAGS=$CXXFLAGS])
-AC_MSG_NOTICE([Build using CPPFLAGS=$CPPFLAGS])
-AC_MSG_NOTICE([Build using CCASFLAGS=$CCASFLAGS])
-AC_MSG_NOTICE([Build using LDFLAGS=$LDFLAGS])
-AC_MSG_NOTICE([Build using EXTRA_CC_LDFLAGS=$EXTRA_CC_LDFLAGS])
-AC_MSG_NOTICE([Build using EXTRA_CXX_LDFLAGS=$EXTRA_CXX_LDFLAGS])
-
 # -----------------------------------------------------------------------------
 # 5. CHECK FOR HEADER FILES
 
@@ -684,8 +700,6 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   sys/sysinfo.h \
                   sys/systeminfo.h \
                   arpa/nameser_compat.h \
-                  db_185.h \
-                  db.h \
                   execinfo.h \
                   netdb.h \
                   regex.h \
@@ -702,6 +716,18 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   sys/mount.h \
                   sys/param.h \
                   ], [], [])
+
+if test "x${with_libdb}" == "xyes"; then
+AC_CHECK_HEADERS([db_185.h \
+                  db.h \
+                  ], [], [])
+fi
+
+if test "x${with_sqlite3}" == "xyes"; then
+AC_CHECK_HEADERS([sqlite3.h \
+                  ], [], [])
+fi
+
 
 APR_CHECK_GETHOSTBYNAME_R_STYLE
 
@@ -728,6 +754,24 @@ AC_LIBOBJ([ink_pread_linux])
 TFW_PACKAGE_SUFFIX=$os_type
 
 MGMT_DEFS="$MGMT_DEFS -DMGMT_USE_SYSLOG"
+
+AC_MSG_NOTICE([Build using CC=$CC])
+AC_MSG_NOTICE([Build using CXX=$CXX])
+AC_MSG_NOTICE([Build using CPP=$CPP])
+AC_MSG_NOTICE([Build using CCAS=$CCAS])
+AC_MSG_NOTICE([Build using CFLAGS=$CFLAGS])
+AC_MSG_NOTICE([Build using SHARED_CFLAGS=$SHARED_CFLAGS])
+AC_MSG_NOTICE([Build using CXXFLAGS=$CXXFLAGS])
+AC_MSG_NOTICE([Build using SHARED_CXXFLAGS=$SHARED_CXXFLAGS])
+AC_MSG_NOTICE([Build using SHARED_CXXLINKFLAGS=$SHARED_LINKCXXFLAGS])
+AC_MSG_NOTICE([Build using CPPFLAGS=$CPPFLAGS])
+AC_MSG_NOTICE([Build using CCASFLAGS=$CCASFLAGS])
+AC_MSG_NOTICE([Build using LDFLAGS=$LDFLAGS])
+AC_MSG_NOTICE([Build using SHARED_LDFLAGS=$SHARED_LDFLAGS])
+AC_MSG_NOTICE([Build using EXTRA_CC_LDFLAGS=$EXTRA_CC_LDFLAGS])
+AC_MSG_NOTICE([Build using EXTRA_CXX_LDFLAGS=$EXTRA_CXX_LDFLAGS])
+AC_MSG_NOTICE([Build using MGMT_DEFS=$MGMT_DEFS])
+AC_MSG_NOTICE([Build using API_DEFS=$API_DEFS])
 
 AC_SUBST([API_DEFS])
 AC_SUBST([CC])

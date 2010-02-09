@@ -169,7 +169,7 @@ traffic_server_LDADD = \
   $(top_builddir)/iocore/eventsystem/libinkevent.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
+  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBICONV@ \
   @LIBMLD@ @LIBEXC@ -lm @LIBEV@
 
@@ -233,7 +233,7 @@ logcat_LDADD = \
   $(top_builddir)/iocore/eventsystem/libinkevent.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
+  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
 logstats_SOURCES = logstats.cc
@@ -293,7 +293,7 @@ logstats_LDADD = \
   $(top_builddir)/iocore/eventsystem/libinkevent.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
+  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
 sac_CPPFLAGS = \
@@ -356,7 +356,7 @@ sac_LDADD = \
   $(top_builddir)/librecords/librecprocess.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
-  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
+  @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
 
 cust_log_fmt_cnvrt_SOURCES = cust_log_fmt_cnvrt.cc

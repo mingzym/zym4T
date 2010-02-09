@@ -262,11 +262,7 @@ ink_memalign(size_t alignment, size_t size)
   void *ptr;
 
 #ifdef HAVE_POSIX_MEMALIGN
-#if (HOST_OS == solaris)
   if (alignment <= 8)
-#else
-  if (alignment <= 16)
-#endif
     return ink_malloc(size);
 
   if (size == (1024 * 1024)) {
