@@ -334,7 +334,7 @@ EXCLUSIVE_REGRESSION_TEST(cache)(RegressionTest *t, int atype, int *pstatus) {
     t,
     write_test.clone(),
     lookup_test.clone(),
-    read_test.clone(),
+    r_sequential(t, 10, read_test.clone()),
     remove_test.clone(),
     lookup_fail_test.clone(),
     read_fail_test.clone(),

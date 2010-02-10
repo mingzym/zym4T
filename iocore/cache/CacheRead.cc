@@ -175,15 +175,21 @@ CacheVC::openReadChooseWriter(int event, Event * e)
   intptr_t err = ECACHE_DOC_BUSY;
   CacheVC *w = NULL;
 
+  CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
+  if (!lock)
+    VC_SCHED_LOCK_RETRY();
+
   if (frag_type != CACHE_FRAG_TYPE_HTTP) {
     ink_assert(od->num_writers == 1);
     w = od->writers.head;
     if (w->start_time > start_time || w->closed < 0) {
+      MUTEX_RELEASE(lock);
       od = NULL;
       SET_HANDLER(&CacheVC::openReadStartHead);
       return openReadStartHead(EVENT_IMMEDIATE, 0);
     }
     if (!w->closed) {
+      MUTEX_RELEASE(lock);
       return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) -err);
     }
     write_vc = w;
@@ -200,6 +206,7 @@ CacheVC::openReadChooseWriter(int event, Event * e)
       if (w->start_time > start_time || w->closed < 0)
         continue;
       if (!w->closed && !cache_config_read_while_writer) {
+        MUTEX_RELEASE(lock);
         return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) - err);
       }
       if (w->alternate_index != CACHE_ALT_INDEX_DEFAULT)
@@ -229,13 +236,15 @@ CacheVC::openReadChooseWriter(int event, Event * e)
 
     if (!vector.count()) {
       if (od->reading_vec) {
-        // the writer(s) are reading the vector, so there is probably
+        MUTEX_RELEASE(lock);
+       // the writer(s) are reading the vector, so there is probably
         // an old vector. Since this reader came before any of the
         // current writers, we should return the old data
         od = NULL;
         SET_HANDLER(&CacheVC::openReadStartHead);
         return openReadStartHead(EVENT_IMMEDIATE, 0);
       } else {
+        MUTEX_RELEASE(lock);
         return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) - ECACHE_NO_DOC);
       }
     }
@@ -243,6 +252,7 @@ CacheVC::openReadChooseWriter(int event, Event * e)
     if (cache_config_select_alternate) {
       alternate_index = HttpTransactCache::SelectFromAlternates(&vector, &request, params);
       if (alternate_index < 0)
+        MUTEX_RELEASE(lock);
         return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) - ECACHE_ALT_MISS);
     } else
 #endif
@@ -256,6 +266,7 @@ CacheVC::openReadChooseWriter(int event, Event * e)
     }
     vector.clear(false);
     if (!write_vc) {
+      MUTEX_RELEASE(lock);
       DDebug("cache_read_agg", "%x: key: %X %X writer alternate different: %d", this, first_key.word(1), alternate_index);
       od = NULL;
       SET_HANDLER(&CacheVC::openReadStartHead);
@@ -299,17 +310,20 @@ CacheVC::openReadFromWriter(int event, Event * e)
     VC_SCHED_LOCK_RETRY();
   od = part->open_read(&first_key); // recheck in case the lock failed
   if (!od) {
+    MUTEX_RELEASE(lock);
     write_vc = NULL;
     SET_HANDLER(&CacheVC::openReadStartHead);
     return openReadStartHead(event, e);
   } else
     ink_debug_assert(od == part->open_read(&first_key));
   if (!write_vc) {
+    MUTEX_RELEASE(lock);
     int ret = openReadChooseWriter(event, e);
     if (ret == EVENT_DONE || !write_vc)
       return ret;
   } else {
     if (writer_done()) {
+      MUTEX_RELEASE(lock);
       DDebug("cache_read_agg",
             "%x: key: %X writer %x has left, continuing as normal read", this, first_key.word(1), write_vc);
       od = NULL;
@@ -322,6 +336,7 @@ CacheVC::openReadFromWriter(int event, Event * e)
   od = NULL;
   // someone is currently writing the document
   if (write_vc->closed < 0) {
+    MUTEX_RELEASE(lock);
     write_vc = NULL;
     //writer aborted, continue as if there is no writer
     SET_HANDLER(&CacheVC::openReadStartHead);
@@ -343,6 +358,7 @@ CacheVC::openReadFromWriter(int event, Event * e)
     DDebug("cache_read_agg", "%x: key: %X lock miss", this, first_key.word(1));
     VC_SCHED_LOCK_RETRY();
   }
+  MUTEX_RELEASE(lock);
 
   if (!write_vc->io.ok())
     return openReadFromWriterFailure(CACHE_EVENT_OPEN_READ_FAILED, (Event *) - err);
@@ -386,8 +402,7 @@ CacheVC::openReadFromWriter(int event, Event * e)
         dir_clean(&earliest_dir);
         SET_HANDLER(&CacheVC::openReadFromWriterMain);
         CACHE_INCREMENT_DYN_STAT(cache_read_busy_success_stat);
-        _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
-        return EVENT_DONE;
+        return callcont(CACHE_EVENT_OPEN_READ);
       }
       // want to snarf the new headers from the writer 
       // and then continue as if nothing happened
@@ -429,8 +444,7 @@ CacheVC::openReadFromWriter(int event, Event * e)
   MUTEX_RELEASE(writer_lock);
   SET_HANDLER(&CacheVC::openReadFromWriterMain);
   CACHE_INCREMENT_DYN_STAT(cache_read_busy_success_stat);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
-  return EVENT_DONE;
+  return callcont(CACHE_EVENT_OPEN_READ);
 #endif //READ_WHILE_WRITER
 }
 
@@ -455,8 +469,7 @@ CacheVC::openReadFromWriterMain(int event, Event * e)
       ink_release_assert(false);
     }
     Warning("Document for %X truncated", earliest_key.word(0));
-    calluser(VC_EVENT_ERROR);
-    return EVENT_CONT;
+    return calluser(VC_EVENT_ERROR);
   }
   /* its possible that the user did a do_io_close before 
      openWriteWriteDone was called. */
@@ -470,22 +483,16 @@ CacheVC::openReadFromWriterMain(int event, Event * e)
   if (vio.ndone >= (ink64)doc_len) {
     ink_assert(bytes <= 0);
     // reached the end of the document and the user still wants more 
-    calluser(VC_EVENT_EOS);
-    return EVENT_DONE;
+    return calluser(VC_EVENT_EOS);
   }
   b = iobufferblock_clone(writer_buf, writer_offset, bytes);
   writer_buf = iobufferblock_skip(writer_buf, &writer_offset, &length, bytes);
   vio.buffer.mbuf->append_block(b);
   vio.ndone += bytes;
-  if (vio.ntodo() <= 0) {
-    calluser(VC_EVENT_READ_COMPLETE);
-    return EVENT_DONE;
-  } else {
-    if (calluser(VC_EVENT_READ_READY))
-      return EVENT_DONE;
-    else
-      return EVENT_CONT;
-  }
+  if (vio.ntodo() <= 0)
+    return calluser(VC_EVENT_READ_COMPLETE);
+  else
+    return calluser(VC_EVENT_READ_READY);
 }
 
 int
@@ -579,14 +586,11 @@ CacheVC::openReadReadDone(int event, Event * e)
 Lerror:
   char tmpstring[100];
   Warning("Document truncated for %s", earliest_key.string(tmpstring));
-  calluser(VC_EVENT_ERROR);
-  return EVENT_CONT;
+  return calluser(VC_EVENT_ERROR);
 Ldone:
-  calluser(VC_EVENT_EOS);
-  return EVENT_DONE;
+  return calluser(VC_EVENT_EOS);
 Lcallreturn:
-  handleEvent(AIO_EVENT_DONE, 0);
-  return EVENT_CONT;
+  return handleEvent(AIO_EVENT_DONE, 0);
 LreadMain:
   fragment++;
   doc_pos = doc->prefix_len();
@@ -609,8 +613,7 @@ CacheVC::openReadMain(int event, Event * e)
   if (seek_to) { // handle do_io_pread
     if (seek_to >= (int)doc_len) {
       vio.ndone = doc_len;
-      calluser(VC_EVENT_EOS);
-      return EVENT_DONE;
+      return calluser(VC_EVENT_EOS);
     }
     if (f.single_fragment) {
       vio.ndone = seek_to;
@@ -645,11 +648,10 @@ CacheVC::openReadMain(int event, Event * e)
   vio.buffer.mbuf->append_block(b);
   vio.ndone += bytes;
   doc_pos += bytes;
-  if (vio.ntodo() <= 0) {
-    calluser(VC_EVENT_READ_COMPLETE);
-    return EVENT_DONE;
-  } else {
-    if (calluser(VC_EVENT_READ_READY))
+  if (vio.ntodo() <= 0)
+    return calluser(VC_EVENT_READ_COMPLETE);
+  else {
+    if (calluser(VC_EVENT_READ_READY) == EVENT_DONE)
       return EVENT_DONE;
     // we have to keep reading until we give the user all the 
     // bytes it wanted or we hit the watermark. 
@@ -658,11 +660,9 @@ CacheVC::openReadMain(int event, Event * e)
     return EVENT_CONT;
   }
 Lread: {
-    if ((inku32)vio.ndone >= doc_len) {
+    if ((inku32)vio.ndone >= doc_len)
       // reached the end of the document and the user still wants more 
-      calluser(VC_EVENT_EOS);
-      return EVENT_DONE;
-    }
+      return calluser(VC_EVENT_EOS);
     last_collision = 0;
     writer_lock_retry = 0;
     // if the state machine calls reenable on the callback from the cache,
@@ -707,14 +707,11 @@ Lread: {
     dir_delete(&earliest_key, part, &earliest_dir);
   }
 Lerror:
-  calluser(VC_EVENT_ERROR);
-  return EVENT_DONE;
+  return calluser(VC_EVENT_ERROR);
 Leos:
-  calluser(VC_EVENT_EOS);
-  return EVENT_DONE;
+  return calluser(VC_EVENT_EOS);
 Lcallreturn:
-  handleEvent(AIO_EVENT_DONE, 0);
-  return EVENT_CONT;
+  return handleEvent(AIO_EVENT_DONE, 0);
 }
 
 /*
@@ -861,8 +858,7 @@ Lsuccess:
   if (write_vc)
     CACHE_INCREMENT_DYN_STAT(cache_read_busy_success_stat);
   SET_HANDLER(&CacheVC::openReadMain);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
-  return EVENT_DONE;
+  return callcont(CACHE_EVENT_OPEN_READ);
 }
 
 // create the directory entry after the vector has been evacuated
@@ -1094,8 +1090,7 @@ Lcallreturn:
   return handleEvent(AIO_EVENT_DONE, 0); // hopefully a tail call
 Lsuccess:
   SET_HANDLER(&CacheVC::openReadMain);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_READ, (void *) this);
-  return EVENT_DONE;
+  return callcont(CACHE_EVENT_OPEN_READ);
 Lookup:
   CACHE_INCREMENT_DYN_STAT(cache_lookup_success_stat);
   _action.continuation->handleEvent(CACHE_EVENT_LOOKUP, 0);

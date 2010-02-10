@@ -1267,8 +1267,7 @@ CacheVC::openWriteWriteDone(int event, Event *e)
       return die();
     }
     SET_HANDLER(&CacheVC::openWriteMain);
-    calluser(VC_EVENT_ERROR);
-    return EVENT_CONT;
+    return calluser(VC_EVENT_ERROR);
   }
   {
     CACHE_TRY_LOCK(lock, part->mutex, mutex->thread_holding);
@@ -1316,14 +1315,14 @@ CacheVC::openWriteMain(int event, Event *e)
   ink_debug_assert(!is_io_in_progress());
 Lagain:
   if (!vio.buffer.writer()) {
-    if (calluser(VC_EVENT_WRITE_READY))
+    if (calluser(VC_EVENT_WRITE_READY) == EVENT_DONE)
       return EVENT_DONE;
     if (!vio.buffer.writer())
       return EVENT_CONT;
   }
   if (vio.ntodo() <= 0) {
     called_user = 1;
-    if (calluser(VC_EVENT_WRITE_COMPLETE))
+    if (calluser(VC_EVENT_WRITE_COMPLETE) == EVENT_DONE)
       return EVENT_DONE;
     if (vio.ntodo() <= 0)
       return EVENT_CONT;
@@ -1358,7 +1357,7 @@ Lagain:
   if (!called_user) {
     if (not_writing) {
       called_user = 1;
-      if (calluser(VC_EVENT_WRITE_READY))
+      if (calluser(VC_EVENT_WRITE_READY) == EVENT_DONE)
         return EVENT_DONE;
       goto Lagain;
     } else if (vio.ntodo() <= 0)
@@ -1410,8 +1409,7 @@ Lcollision:
   }
 Ldone:
   SET_HANDLER(&CacheVC::openWriteMain);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) this);
-  return EVENT_DONE;
+  return callcont(CACHE_EVENT_OPEN_WRITE);
 Lcallreturn:
   return handleEvent(AIO_EVENT_DONE, 0); // hopefully a tail call
 }
@@ -1496,8 +1494,7 @@ Lcollision:
       if (od->has_multiple_writers()) {
         MUTEX_RELEASE(lock);
         SET_HANDLER(&CacheVC::openWriteMain);
-        _action.continuation->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) this);
-        return EVENT_DONE;
+        return callcont(CACHE_EVENT_OPEN_WRITE);
       }
     }
     // check for collision
@@ -1518,8 +1515,7 @@ Lsuccess:
   if (_action.cancelled)
     goto Lcancel;
   SET_HANDLER(&CacheVC::openWriteMain);
-  _action.continuation->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) this);
-  return EVENT_DONE;
+  return callcont(CACHE_EVENT_OPEN_WRITE);
 
 Lfailure:
   CACHE_INCREMENT_DYN_STAT(base_stat + CACHE_STAT_FAILURE);
@@ -1564,8 +1560,7 @@ CacheVC::openWriteStartBegin(int event, Event *e)
     MUTEX_RELEASE(lock);
     // write by key
     SET_HANDLER(&CacheVC::openWriteMain);
-    _action.continuation->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) this);
-    return EVENT_DONE;
+    return callcont(CACHE_EVENT_OPEN_WRITE);
   }
 }
 
@@ -1623,7 +1618,7 @@ Cache::open_write(Continuation *cont, CacheKey *key, CacheFragType frag_type,
   }
   if (!overwrite) {
     SET_CONTINUATION_HANDLER(c, &CacheVC::openWriteMain);
-    cont->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) c);
+    c->callcont(CACHE_EVENT_OPEN_WRITE);
     return ACTION_RESULT_DONE;
   } else {
     SET_CONTINUATION_HANDLER(c, &CacheVC::openWriteOverwrite);
@@ -1750,7 +1745,7 @@ Cache::open_write(Continuation *cont, CacheKey *key, CacheHTTPInfo *info, time_t
 
 Lmiss:
   SET_CONTINUATION_HANDLER(c, &CacheVC::openWriteMain);
-  cont->handleEvent(CACHE_EVENT_OPEN_WRITE, (void *) c);
+  c->callcont(CACHE_EVENT_OPEN_WRITE);
   return ACTION_RESULT_DONE;
 
 Lfailure:

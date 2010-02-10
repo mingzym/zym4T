@@ -257,6 +257,7 @@ struct CacheVC:CacheVConnection
 
   bool writer_done();
   int calluser(int event);
+  int callcont(int event);
   int die();
   int dead(int event, Event *e);
 
@@ -576,9 +577,23 @@ CacheVC::calluser(int event)
   recursive--;
   if (closed) {
     die();
-    return 1;
+    return EVENT_DONE;
   }
-  return 0;
+  return EVENT_CONT;
+}
+
+inline int
+CacheVC::callcont(int event)
+{
+  recursive++;
+  ink_debug_assert(!part || this_ethread() != part->mutex->thread_holding);
+  _action.continuation->handleEvent(event, this);
+  recursive--;
+  if (closed)
+    die();
+  else if (vio.vc_server)
+    handleEvent(EVENT_IMMEDIATE, 0);
+  return EVENT_DONE;
 }
 
 inline int
