@@ -1093,7 +1093,7 @@ VMap::upAddr(char *virt_ip)
     sub_id = ((VIPInfo *) hash_value)->sub_interface_id;
 
 #if (HOST_OS == linux)
-    res = execl(absolute_vipconf_binary, vip_conf, "up", virt_ip, "/sbin/ifconfig", interface, sub_id, NULL);
+    res = execl(absolute_vipconf_binary, vip_conf, "up", virt_ip, "/sbin/ifconfig", interface, sub_id, (char*) NULL);
 #elif (HOST_OS == freebsd) || (HOST_OS == solaris) || (HOST_OS == darwin)
     res = execl(absolute_vipconf_binary, vip_conf, "up", virt_ip, "/sbin/ifconfig", interface, sub_id, (char *)0);
 #else
@@ -1151,7 +1151,7 @@ VMap::downAddr(char *virt_ip)
     sub_id = ((VIPInfo *) hash_value)->sub_interface_id;
 
 #if (HOST_OS == linux)
-    res = execl(absolute_vipconf_binary, vip_conf, "down", virt_ip, "/sbin/ifconfig", interface, sub_id, NULL);
+    res = execl(absolute_vipconf_binary, vip_conf, "down", virt_ip, "/sbin/ifconfig", interface, sub_id, (char*)NULL);
 #elif (HOST_OS == freebsd) || (HOST_OS == solaris) || (HOST_OS == darwin)
     res = execl(absolute_vipconf_binary, vip_conf, "down", virt_ip, "/sbin/ifconfig", interface, sub_id, (char *)0);
 #else
