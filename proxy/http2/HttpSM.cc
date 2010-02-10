@@ -23,7 +23,7 @@
  */
 
 #include "HttpSM.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "HttpClientSession.h"
 #include "HttpServerSession.h"
 #include "HttpDebugNames.h"

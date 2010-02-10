@@ -45,7 +45,7 @@
 #include "Main.h"
 #include "Error.h"
 #include "P_EventSystem.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "HTTP.h"
 #include "HttpConfig.h"
 #include "StatSystem.h"

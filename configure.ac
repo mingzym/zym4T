@@ -373,6 +373,8 @@ case $host_os in
     debug_opt="-ggdb3 $common_opt"
     release_opt="-g $common_opt -O3 -feliminate-unused-debug-symbols -fno-strict-aliasing"
     cxx_opt="-Wno-invalid-offsetof"
+    CPPFLAGS="$CPPFLAGS -I/opt/local/include"
+    LDFLAGS="${LDFLAGS} -L/opt/local/lib"
     ;;
   freebsd*)
     common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
@@ -515,6 +517,7 @@ AC_CHECK_LIB([pthread],[pthread_exit],[AC_SUBST([LIBTHREAD],["-lpthread"])])
 AC_CHECK_LIB([rt],[clock_gettime],[AC_SUBST([LIBRT],["-lrt"])])
 AC_CHECK_LIB([posix4],[clock_gettime],[AC_SUBST([LIBRT],["-lposix4"])])
 AC_CHECK_LIB([iconv],[iconv_open],[AC_SUBST([LIBICONV],["-liconv"])])
+AC_CHECK_LIB([iconv],[libiconv_open],[AC_SUBST([LIBICONV],["-liconv"])])
 AC_CHECK_LIB([ev],[ev_sleep],[AC_SUBST([LIBEV],["-lev"])])
 
 AC_CHECK_LIB([ssl],[SSL_CTX_new],
@@ -699,6 +702,8 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   sys/sysctl.h \
                   sys/sysinfo.h \
                   sys/systeminfo.h \
+		  arpa/inet.h \
+		  arpa/nameser.h \
                   arpa/nameser_compat.h \
                   execinfo.h \
                   netdb.h \
@@ -715,7 +720,14 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   stropts.h \
                   sys/mount.h \
                   sys/param.h \
+                  math.h \
                   ], [], [])
+
+AC_CHECK_HEADERS([netinet/ip_icmp.h], [], [],
+                 [[#ifdef HAVE_NETINET_IP_H
+                    #include <netinet/ip.h>
+                   #endif
+                 ]])
 
 if test "x${with_libdb}" == "xyes"; then
 AC_CHECK_HEADERS([db_185.h \

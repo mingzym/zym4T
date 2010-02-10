@@ -31,7 +31,7 @@
 #include "ink_unused.h"
 #include <sys/types.h>
 #include "Main.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "ControlMatcher.h"
 #include "CacheControl.h"
 #include "ParentSelection.h"

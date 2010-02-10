@@ -30,6 +30,9 @@
  *
  */
 
+#include "ink_config.h"
+#include "ink_platform.h"
+
 #include "Main.h"
 #include "MgmtUtils.h"
 #include "MgmtSchema.h"
@@ -426,11 +429,19 @@ max_out_limit(char *name, int which, bool max_it = true, bool unlim_it = true)
   if (max_it) {
     ink_release_assert(getrlimit(MAGIC_CAST(which), &rl) >= 0);
     if (rl.rlim_cur != rl.rlim_max) {
+#if (HOST_OS == darwin)
+      if (which == RLIMIT_NOFILE)
+	rl.rlim_cur = fmin(OPEN_MAX, rl.rlim_max);
+      else
+	rl.rlim_cur = rl.rlim_max;
+#else
       rl.rlim_cur = rl.rlim_max;
+#endif
       ink_release_assert(setrlimit(MAGIC_CAST(which), &rl) >= 0);
     }
   }
 
+#if (HOST_OS != darwin)
   if (unlim_it) {
     ink_release_assert(getrlimit(MAGIC_CAST(which), &rl) >= 0);
     if (rl.rlim_cur != RLIM_INFINITY) {
@@ -438,6 +449,7 @@ max_out_limit(char *name, int which, bool max_it = true, bool unlim_it = true)
       ink_release_assert(setrlimit(MAGIC_CAST(which), &rl) >= 0);
     }
   }
+#endif
   ink_release_assert(getrlimit(MAGIC_CAST(which), &rl) >= 0);
 #ifdef MGMT_USE_SYSLOG
   //syslog(LOG_NOTICE, "NOTE: %s(%d):cur(%d),max(%d)", name, which, (int)rl.rlim_cur, (int)rl.rlim_max);

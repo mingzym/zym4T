@@ -23,13 +23,13 @@
 
 /****************************************************************************
 
-  Config.h
+  ProxyConfig.h
 
   
   ****************************************************************************/
 
-#ifndef _Config_h
-#define _Config_h
+#ifndef _Proxy_Config_h
+#define _Proxy_Config_h
 
 #include "inktomi++.h"
 #include "ProcessManager.h"

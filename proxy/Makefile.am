@@ -80,8 +80,8 @@ traffic_server_SOURCES = \
   CacheControl.h \
   CacheInspectorAllow.cc \
   CacheInspectorAllow.h \
-  Config.cc \
-  Config.h \
+  ProxyConfig.cc \
+  ProxyConfig.h \
   ControlBase.cc \
   ControlBase.h \
   ControlMatcher.cc \
@@ -192,7 +192,7 @@ logcat_LDADD = \
   StatSystem.o \
   CacheInspectorAllow.o \
   ReverseProxy.o \
-  Config.o \
+  ProxyConfig.o \
   signals.o \
   Error.o \
   EventName.o \
@@ -251,7 +251,7 @@ logstats_LDADD = \
   StatSystem.o \
   CacheInspectorAllow.o \
   ReverseProxy.o \
-  Config.o \
+  ProxyConfig.o \
   signals.o \
   Error.o \
   EventName.o \
@@ -316,7 +316,7 @@ sac_LDADD = \
   StatSystem.o \
   CacheInspectorAllow.o \
   ReverseProxy.o \
-  Config.o \
+  ProxyConfig.o \
   signals.o \
   Error.o \
   EventName.o \
@@ -372,7 +372,7 @@ libClusterHashStandalone_a_SOURCES = \
 libTrafficServerStandalone_a_SOURCES = \
   signals.cc \
   Error.cc \
-  Config.cc \
+  ProxyConfig.cc \
   EventName.cc \
   DiagsConfig.cc \
   StatPages.cc \

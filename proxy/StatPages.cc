@@ -29,7 +29,7 @@
  ****************************************************************************/
 
 #include "ink_config.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "StatPages.h"
 #include "HdrUtils.h"
 #include "CacheInspectorAllow.h"

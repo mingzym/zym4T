@@ -77,12 +77,10 @@ extern "C"
 }
 #endif
 
-#if (HOST_OS == freebsd) || (HOST_OS == darwin)
+#if ((HOST_OS == freebsd) || (HOST_OS == darwin))
 typedef long paddr_t;
 typedef unsigned int in_addr_t;
-#endif
-
-#if (HOST_OS == solaris)
+#elif (HOST_OS == solaris)
 #include <sys/types.h> /* paddr_t should be defined here*/
 typedef uint64_t  paddr_t;
 #endif

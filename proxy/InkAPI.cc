@@ -41,7 +41,7 @@
 #include "P_Cache.h"
 #include "I_RecCore.h"
 #include "I_RecSignals.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "stats/CoupledStats.h"
 #include "stats/Stats.h"
 #include "InkAPIInternal.h"

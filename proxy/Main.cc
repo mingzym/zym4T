@@ -62,7 +62,7 @@ extern "C" int plock(int);
 #include "RecordsConfig.h"
 #include "Transform.h"
 #include "ProcessManager.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 //#include "Ftp.h"
 //#include "FtpProxy.h"
 #include "HttpProxyServerMain.h"
@@ -321,9 +321,10 @@ max_out_limit(char *name, int which, bool max_it = true, bool unlim_it = true)
     ink_release_assert(getrlimit(MAGIC_CAST(which), &rl) >= 0);
     if (rl.rlim_cur != rl.rlim_max) {
 #if (HOST_OS == darwin)
-      struct rlimit rlt;
-      rlt.rlim_max = OPEN_MAX;
-      rl.rlim_cur = min(rlt.rlim_max, rl.rlim_max);
+      if (which == RLIMIT_NOFILE)
+	rl.rlim_cur = fmin(OPEN_MAX, rl.rlim_max);
+      else
+	rl.rlim_cur = rl.rlim_max;
 #else
       rl.rlim_cur = rl.rlim_max;
 #endif

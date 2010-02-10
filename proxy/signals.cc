@@ -30,7 +30,7 @@
 #include <unistd.h>
 #include "inktomi++.h"
 #include "signals.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "P_EventSystem.h"
 #include "StatSystem.h"
 #include "P_Cache.h"

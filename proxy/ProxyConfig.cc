@@ -22,7 +22,7 @@
  */
 
 #include "inktomi++.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "P_EventSystem.h"
 
 ConfigProcessor configProcessor;

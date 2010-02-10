@@ -50,7 +50,7 @@
 #endif
 
 #include "inktomi++.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 
 #undef MgmtInt
 #undef MgmtFloat

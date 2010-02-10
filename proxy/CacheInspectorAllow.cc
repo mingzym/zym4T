@@ -31,7 +31,7 @@
 #include <stdio.h>
 #include "Main.h"
 #include "CacheInspectorAllow.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "StatSystem.h"
 #include "P_EventSystem.h"
 #include "P_Cache.h"

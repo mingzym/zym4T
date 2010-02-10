@@ -140,7 +140,13 @@ struct ifafilt;
 #  include <sys/sockio.h>
 #endif
 
+#ifdef HAVE_NETINET_IP_H
+#include <netinet/ip.h>
+#endif
+
+#ifdef HAVE_NETINET_IP_ICMP_H
 #include <netinet/ip_icmp.h>
+#endif
 
 #include <resolv.h>
 
@@ -165,8 +171,18 @@ typedef unsigned int in_addr_t;
 
 #include <dlfcn.h>
 
+#ifdef HAVE_ARPA_INET_H
+#  include <arpa/inet.h>
+#endif
+#ifdef HAVE_ARPA_NAMESER_H
+#  include <arpa/nameser.h>
+#endif
 #ifdef HAVE_ARPA_NAMESER_COMPAT_H
 #  include <arpa/nameser_compat.h>
+#endif
+
+#ifdef HAVE_MATH_H
+#include <math.h>
 #endif
 
 #ifndef MAXINT

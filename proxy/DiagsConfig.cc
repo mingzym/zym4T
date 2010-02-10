@@ -30,7 +30,7 @@
 
 #else
 #include "Main.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #define MGMT_PTR       pmgmt
 #define DIAGS_LOG_FILE "diags.log"
 

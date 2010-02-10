@@ -25,7 +25,7 @@
 
 #include "Main.h"
 #include "Update.h"
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "StatSystem.h"
 #include "HttpUpdateSM.h"
 #include "HttpDebugNames.h"

@@ -61,7 +61,7 @@
 
 #ifndef INK_NO_TRANSFORM
 
-#include "Config.h"
+#include "ProxyConfig.h"
 #include "P_Net.h"
 #include "MimeTable.h"
 #include "TransformInternal.h"
