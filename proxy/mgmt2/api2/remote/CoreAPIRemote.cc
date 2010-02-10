@@ -36,6 +36,7 @@
  * 
  ***************************************************************************/
 
+#include "ink_config.h"
 #include <strings.h>
 #include "ink_snprintf.h"
 #include "ink_string.h"

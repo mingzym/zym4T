@@ -1871,6 +1871,12 @@ Net_SNMPGetInfo(char *sys_location, size_t sys_location_len, char *sys_contact, 
 
 #include "ParseRules.h"
 
+// TODO: consolidate location of these defaults
+#define DEFAULT_ROOT_DIRECTORY            PREFIX
+#define DEFAULT_LOCAL_STATE_DIRECTORY     "var/trafficserver"
+#define DEFAULT_SYSTEM_CONFIG_DIRECTORY   "etc/trafficserver"
+#define DEFAULT_LOG_DIRECTORY             "var/log/trafficserver"
+#define DEFAULT_TS_DIRECTORY_FILE         PREFIX "/etc/traffic_server"
 
 #define NETCONFIG_HOSTNAME  0
 #define NETCONFIG_GATEWAY   1
@@ -3047,7 +3053,7 @@ getTSdirectory(char *ts_path, size_t ts_path_len)
   char *env_path;
 
   if ((env_path = getenv("TS_ROOT"))) {
-    ink_strcnpy(ts_path, env_path, ts_path_len);
+    ink_strncpy(ts_path, env_path, ts_path_len);
     return 0;
   }
   if ((fp = fopen(DEFAULT_TS_DIRECTORY_FILE, "r")) == NULL) {

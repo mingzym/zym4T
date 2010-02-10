@@ -23,8 +23,10 @@
 
 #if (HOST_OS == linux) || (HOST_OS == solaris) || (HOST_OS == freebsd) || (HOST_OS == darwin)
 
+#include "inktomi++.h"
 #include "ConfigAPI.h"
 #include "SysAPI.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -32,7 +34,7 @@
 #include <sys/wait.h>
 #include <stdarg.h>
 #include <string.h>
-#include "inktomi++.h"
+
 #include "CoreAPI.h"
 
 #include "../utils/XmlUtils.h"

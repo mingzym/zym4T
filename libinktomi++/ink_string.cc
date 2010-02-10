@@ -29,12 +29,13 @@
  
  ****************************************************************************/
 
+#include "inktomi++.h"   /* MAGIC_EDITING_TAG */
+
 #include <assert.h>
 #include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
-#include "inktomi++.h"   /* MAGIC_EDITING_TAG */
 
 #define INK_MAX_STRING_ARRAY_SIZE 128
 

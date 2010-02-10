@@ -30,6 +30,7 @@
                   (char*)NULL);
  ****************************************************************/
 
+#include "inktomi++.h"
 #include "../api2/include/INKMgmtAPI.h"
 #include "ShowCmd.h"
 #include "ConfigCmd.h"
@@ -54,7 +55,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include "cli_scriptpaths.h"
-#include "inktomi++.h"
 #include <ConfigAPI.h>
 #include <SysAPI.h>
 

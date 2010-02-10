@@ -712,6 +712,7 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   sys/sysctl.h \
                   sys/systeminfo.h \
                   netinet/in.h \
+                  netinet/in_systm.h \
                   sys/ioctl.h \
                   sys/byteorder.h \
                   sys/sockio.h \
@@ -736,8 +737,13 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   stropts.h \
                   sys/mount.h \
                   sys/param.h \
+		  sys/sysmacros.h \
                   math.h \
+		  net/ppp_defs.h \
                   ], [], [])
+
+AC_CHECK_HEADERS([pcre/pcre.h], 
+                 [], [],[])
 
 AC_CHECK_HEADERS([netinet/ip.h], [], [],
                  [[#ifdef HAVE_SYS_TYPES_H
@@ -757,6 +763,9 @@ AC_CHECK_HEADERS([netinet/ip_icmp.h], [], [],
                    #endif
                    #ifdef HAVE_NETINET_IP_H
                     #include <netinet/ip.h>
+                   #endif
+                   #ifdef HAVE_NETINET_IN_SYSTM_H
+                    #include <netinet/in_systm.h>
                    #endif
                  ]])
 

@@ -28,7 +28,11 @@
 #include "UrlMapping.h"
 #include "UmsHelper.h"
 
+#ifdef HAVE_PCRE_PCRE_H
+#include <pcre/pcre.h>
+#else
 #include <pcre.h>
+#endif
 #include <list>
 
 #define URL_REMAP_FILTER_NONE         0x00000000

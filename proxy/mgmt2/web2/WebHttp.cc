@@ -29,10 +29,10 @@
  *
  ****************************************************************************/
 
+#include "inktomi++.h"
+#include "ink_platform.h"
 #include "ink_unused.h" /* MAGIC_EDITING_TAG */
 
-#include "ink_platform.h"
-#include "inktomi++.h"
 #include "SimpleTokenizer.h"
 
 #include "WebCompatibility.h"

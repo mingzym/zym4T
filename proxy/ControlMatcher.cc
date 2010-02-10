@@ -28,6 +28,7 @@
  *
  ****************************************************************************/
 
+#include "ink_config.h"
 #include "ink_unused.h"
 #include <sys/types.h>
 #include "Main.h"

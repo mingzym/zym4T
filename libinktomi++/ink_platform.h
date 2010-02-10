@@ -115,8 +115,20 @@ struct ifafilt;
 #define __STDC__ 0
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+  #include <netinet/in.h>
+#endif
+
 #ifdef HAVE_NETINET_IP_H
-#  include <netinet/ip.h>
+  #include <netinet/ip.h>
+#endif
+
+#ifdef HAVE_NETINET_IN_SYSTM_H
+  #include <netinet/in_systm.h>
+#endif
+
+#ifdef HAVE_NETINET_IP_ICMP_H
+  #include <netinet/ip_icmp.h>
 #endif
 
 #ifdef HAVE_MACHINE_ENDIAN_H
@@ -138,14 +150,6 @@ struct ifafilt;
 
 #ifdef HAVE_SYS_SOCKIO_H
 #  include <sys/sockio.h>
-#endif
-
-#ifdef HAVE_NETINET_IP_H
-#include <netinet/ip.h>
-#endif
-
-#ifdef HAVE_NETINET_IP_ICMP_H
-#include <netinet/ip_icmp.h>
 #endif
 
 #include <resolv.h>
@@ -183,6 +187,10 @@ typedef unsigned int in_addr_t;
 
 #ifdef HAVE_MATH_H
 #include <math.h>
+#endif
+
+#ifdef HAVE_SYS_SYSMACROS_H
+#include <sys/sysmacros.h>
 #endif
 
 #ifndef MAXINT

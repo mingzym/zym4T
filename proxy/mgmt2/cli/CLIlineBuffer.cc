@@ -28,12 +28,13 @@
  *  
  * 
  ****************************************************************************/
+
+#include "inktomi++.h"
+#include "ink_platform.h"
 #include "ink_unused.h"      /* MAGIC_EDITING_TAG */
 
-#include "ink_platform.h"
-
 /* local includes */
-#include "inktomi++.h"
+
 #include "DynArray.h"
 #include "WebMgmtUtils.h"
 #include "FileManager.h"

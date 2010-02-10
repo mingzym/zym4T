@@ -97,6 +97,7 @@ static char sccsid[] = "@(#)res_init.c	8.1 (Berkeley) 6/7/93";
 #endif /* LIBC_SCCS and not lint */
 
 #include "ink_config.h"
+#include "ink_platform.h"
 
 #include <sys/types.h>
 #include <sys/param.h>

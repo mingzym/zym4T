@@ -27,8 +27,8 @@
 
 **************************************************************************/
 
-#include <unistd.h>
 #include "inktomi++.h"
+#include <unistd.h>
 #include "signals.h"
 #include "ProxyConfig.h"
 #include "P_EventSystem.h"

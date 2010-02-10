@@ -32,6 +32,7 @@
  * 
  ***************************************************************************/
 
+#include "ink_config.h"
 #include "ink_sock.h"
 #include "ink_string.h"
 #include "NetworkUtilsRemote.h"

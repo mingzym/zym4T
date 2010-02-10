@@ -1208,7 +1208,9 @@ adjust_sys_settings(void)
   set_rlimit(RLIMIT_STACK,true,true);
   set_rlimit(RLIMIT_DATA,true,true);
   set_rlimit(RLIMIT_FSIZE, true, false);
+#ifdef RLIMIT_RSS
   set_rlimit(RLIMIT_RSS,true,true);
+#endif
 
 #endif  // linux check
 }

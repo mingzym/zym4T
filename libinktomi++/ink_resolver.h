@@ -76,6 +76,9 @@
 #include "ink_platform.h"
 #include <resolv.h>
 #include <arpa/nameser.h>
+#ifdef HAVE_NET_PPP_DEFS_H
+#include <net/ppp_defs.h>
+#endif
 
 #define RES_USE_DNSSEC 0x00200000 
 #define RES_NOTLDQUERY  0x00100000      /*%< don't unqualified name as a tld */

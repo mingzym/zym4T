@@ -29,8 +29,8 @@
  *
  * 
  ***************************************************************************/
-#include <limits.h>
 #include "inktomi++.h"
+#include <limits.h>
 
 #include "INKMgmtAPI.h"
 #include "CfgContextManager.h"

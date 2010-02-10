@@ -29,9 +29,10 @@
  * 
  */
 
+#include "ink_config.h"
+#include "ink_platform.h"
 #include "ink_unused.h"        /* MAGIC_EDITING_TAG */
 
-#include "ink_platform.h"
 #include "Main.h"
 #include "VMap.h"
 #include "P_RecLocal.h"

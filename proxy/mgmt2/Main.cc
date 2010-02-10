@@ -468,7 +468,9 @@ set_process_limits(int fds_throttle)
   set_rlimit(RLIMIT_STACK, true, true);
   set_rlimit(RLIMIT_DATA, true, true);
   set_rlimit(RLIMIT_FSIZE, true, false);
+#ifdef RLIMIT_RSS
   set_rlimit(RLIMIT_RSS, true, true);
+#endif
 
   if (!getrlimit(RLIMIT_NOFILE, &lim)) {
     if (fds_throttle > (int) (lim.rlim_cur + FD_THROTTLE_HEADROOM)) {

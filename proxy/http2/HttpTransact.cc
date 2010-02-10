@@ -21,10 +21,11 @@
   limitations under the License.
  */
 
+#include "inktomi++.h"
+
 #include <strings.h>
 #include <math.h>
 
-#include "inktomi++.h"
 //#include "Hash_Table.h"
 #include "HttpTransact.h"
 #include "HttpTransactHeaders.h"

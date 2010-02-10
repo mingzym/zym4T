@@ -30,6 +30,7 @@
    
  ****************************************************************************/
 
+#include "ink_config.h"
 #include "Allocator.h"
 #include "HttpClientSession.h"
 #include "HttpSM.h"

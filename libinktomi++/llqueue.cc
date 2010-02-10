@@ -21,6 +21,8 @@
   limitations under the License.
  */
 
+#include "ink_config.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #if (HOST_OS != freebsd) && (HOST_OS != darwin)
@@ -28,8 +30,8 @@
 #endif
 #include <assert.h>
 #include <limits.h>
-#include "ink_unused.h" /* MAGIC_EDITING_TAG */
 
+#include "ink_unused.h" /* MAGIC_EDITING_TAG */
 #include "llqueue.h"
 #include "errno.h"
 

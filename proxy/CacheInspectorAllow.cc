@@ -28,6 +28,7 @@
  *
  ****************************************************************************/
 
+#include "ink_config.h"
 #include <stdio.h>
 #include "Main.h"
 #include "CacheInspectorAllow.h"

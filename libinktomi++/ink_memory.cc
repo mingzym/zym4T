@@ -29,6 +29,8 @@
  
  ****************************************************************************/
 
+#include "inktomi++.h"
+
 #include <assert.h>
 #if (HOST_OS == linux)
 #ifndef _XOPEN_SOURCE
@@ -41,7 +43,7 @@
 #ifdef HAVE_MALLOC_H
 #include <malloc.h>
 #endif
-#include "inktomi++.h"     /* MAGIC_EDITING_TAG */
+
 
 
 class MAMemChunk
