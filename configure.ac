@@ -582,7 +582,7 @@ AC_CHECK_LIB([expat],[XML_SetUserData],
   [$LIBTHREAD]
 )
 
-if test "x${with_sqlite3}" == "xyes"; then
+if test "x${with_sqlite3}" = "xyes"; then
   AC_CHECK_LIB([sqlite3], [sqlite3_open], 
     [AC_SUBST([LIBSQLITE3], ["-lsqlite3"])
     ],
@@ -591,7 +591,7 @@ if test "x${with_sqlite3}" == "xyes"; then
 fi
 
 
-if test "x${with_libdb}" == "xyes"; then
+if test "x${with_libdb}" = "xyes"; then
   # Berkeley DB check: 
   # TODO: Better checking for versions/directories similar to TCL
   ts_have_db=0
@@ -711,7 +711,7 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   sys/sysinfo.h \
                   sys/sysctl.h \
                   sys/systeminfo.h \
-                  netinet/ip.h \
+                  netinet/in.h \
                   sys/ioctl.h \
                   sys/byteorder.h \
                   sys/sockio.h \
@@ -739,19 +739,34 @@ AC_CHECK_HEADERS([sys/epoll.h \
                   math.h \
                   ], [], [])
 
+AC_CHECK_HEADERS([netinet/ip.h], [], [],
+                 [[#ifdef HAVE_SYS_TYPES_H
+                    #include <sys/types.h>
+                   #endif
+                   #ifdef HAVE_NETINET_IN_H
+                    #include <netinet/in.h>
+                   #endif
+                 ]])
+
 AC_CHECK_HEADERS([netinet/ip_icmp.h], [], [],
-                 [[#ifdef HAVE_NETINET_IP_H
+                 [[#ifdef HAVE_SYS_TYPES_H
+                    #include <sys/types.h>
+                   #endif
+                   #ifdef HAVE_NETINET_IN_H
+                    #include <netinet/in.h>
+                   #endif
+                   #ifdef HAVE_NETINET_IP_H
                     #include <netinet/ip.h>
                    #endif
                  ]])
 
-if test "x${with_libdb}" == "xyes"; then
+if test "x${with_libdb}" = "xyes"; then
 AC_CHECK_HEADERS([db_185.h \
                   db.h \
                   ], [], [])
 fi
 
-if test "x${with_sqlite3}" == "xyes"; then
+if test "x${with_sqlite3}" = "xyes"; then
 AC_CHECK_HEADERS([sqlite3.h \
                   ], [], [])
 fi
