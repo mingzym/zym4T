@@ -1004,7 +1004,11 @@ DNSProcessor::getby(char *x, int len, int type,
   if (proxy_cache)
     e->proxy_cache = true;
   e->init(x, len, type, cont, wait, adnsH, timeout);
-  dnsProcessor.thread->schedule_imm(e);
+  MUTEX_TRY_LOCK(lock, e->mutex, this_ethread());
+  if (!lock)
+    dnsProcessor.thread->schedule_imm(e);
+  else
+    e->handleEvent(EVENT_IMMEDIATE, 0);
   if (wait) {
 #if (HOST_OS == darwin)
     ink_sem_wait(e->sem);
