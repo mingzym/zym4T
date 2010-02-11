@@ -90,6 +90,8 @@ RecordElement RecordsConfig[] = {
   //# Negative core limit means max out limit
   {CONFIG, "proxy.config.core_limit", "", INK_INT, "0", RU_NULL, RR_NULL, RC_NULL, NULL, RA_NULL}
   ,
+  {CONFIG, "proxy.config.stack_dump_enabled", "", INK_INT, "1", RU_NULL, RR_NULL, RC_NULL, NULL, RA_NULL}
+  ,
   {CONFIG, "proxy.config.cop.core_signal", "", INK_INT, "0", RU_NULL, RR_REQUIRED, RC_NULL, NULL, RA_NULL}
   ,                             // needed by traffic_cop
   {CONFIG, "proxy.config.cop.linux_min_swapfree_kb", "", INK_INT, "10240", RU_NULL, RR_REQUIRED, RC_NULL, NULL, RA_NULL}
@@ -921,6 +923,8 @@ RecordElement RecordsConfig[] = {
   {CONFIG, "proxy.config.http.server_max_connections", "", INK_INT, "0", RU_REREAD, RR_NULL, RC_INT, "^[0-9]+$", RA_NULL}
   ,
   {CONFIG, "proxy.config.http.origin_max_connections", "", INK_INT, "0", RU_REREAD, RR_NULL, RC_INT, "^[0-9]+$", RA_NULL}
+  ,
+  {CONFIG, "proxy.config.http.origin_min_keep_alive_connections", "", INK_INT, "0", RU_REREAD, RR_NULL, RC_INT, "^[0-9]+$", RA_NULL}
   ,
 
   //       ##########################
