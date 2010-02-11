@@ -1594,11 +1594,7 @@ setSNMP(char *sys_location, char *sys_contact, char *sys_name, char *authtrapena
     }
   } else {
     int res;
-#if (HOST_OS ==freebsd) || (HOST_OS == darwin)
-    res = execl(mv_binary, "mv", snmp_path_new, snmp_path, (char *)0);
-#else
-    res = execl(mv_binary, "mv", snmp_path_new, snmp_path, NULL);
-#endif
+    res = execl(mv_binary, "mv", snmp_path_new, snmp_path, (char*)NULL);
     if (res != 0) {
       DPRINTF(("[SysAPI] mv of new snmp cfg file failed\n"));
     }
@@ -1611,11 +1607,7 @@ setSNMP(char *sys_location, char *sys_contact, char *sys_name, char *authtrapena
     wait(&status);
   } else {
     int res;
-#if (HOST_OS == freebsd) || (HOST_OS == darwin)
-    res = execl(mv_binary, "mv", ts_snmp_path_new, ts_snmp_path, (char *)0);
-#else
-    res = execl(mv_binary, "mv", ts_snmp_path_new, ts_snmp_path, NULL);
-#endif
+    res = execl(mv_binary, "mv", ts_snmp_path_new, ts_snmp_path, (char*)NULL);
     if (res != 0) {
       DPRINTF(("[SysAPI] mv of new ts_snmp cfg file failed\n"));
     }
@@ -1670,11 +1662,7 @@ setSNMP(char *sys_location, char *sys_contact, char *sys_name, char *authtrapena
       wait(&status);
     } else {
       int res;
-#if (HOST_OS == freebsd) || (HOST_OS == darwin)
-      res = execl(mv_binary, "mv", snmp_pass_new, snmp_pass, (char *)0);
-#else
-      res = execl(mv_binary, "mv", snmp_pass_new, snmp_pass, NULL);
-#endif
+      res = execl(mv_binary, "mv", snmp_pass_new, snmp_pass, (char*)NULL);
       if (res != 0) {
         DPRINTF(("[SysAPI] mv of new snmpass.sh file failed\n"));
       }

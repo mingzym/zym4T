@@ -1387,12 +1387,7 @@ uMountFloppy(char *net_floppy_config)
       return 1;
     }
   } else {
-
-#if (HOST_OS == freebsd) || (HOST_OS == darwin) || (HOST_OS == solaris)
-    int res = execl(net_floppy_config,"net_floppy_config","done",(char *)0);
-#else
-    int res = execl(net_floppy_config,"net_floppy_config","done",NULL);
-#endif
+    int res = execl(net_floppy_config,"net_floppy_config","done",(char*)NULL);
     return res;
   }
 
@@ -1466,11 +1461,7 @@ Config_FloppyNetRestore()
       return 1;
     }
   } else {
-#if (HOST_OS == freebsd) || (HOST_OS == darwin) || (HOST_OS == solaris)
-    int res = execl(net_floppy_config,"net_floppy_config","do", (char *)0);
-#else
-    int res = execl(net_floppy_config,"net_floppy_config","do", NULL);
-#endif
+    int res = execl(net_floppy_config,"net_floppy_config","do", (char*)NULL);
     return res;
   }
 

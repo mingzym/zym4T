@@ -1508,7 +1508,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
   } else if (pid > 0) {
     wait(&status);
   } else {
-    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", NULL);
+    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't bring interface down");
     }
@@ -1522,7 +1522,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
   } else if (pid > 0) {
     wait(&status);
   } else {
-    int res = execl(rmmod_binary, "rmmod", modname, NULL);
+    int res = execl(rmmod_binary, "rmmod", modname, (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't rmmod the ethernet driver");
     }
@@ -1536,7 +1536,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
   } else if (pid > 0) {
     wait(&status);
   } else {
-    int res = execl(insmod_binary, "insmod", modname, options, NULL);
+    int res = execl(insmod_binary, "insmod", modname, options, (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't insmod the ethernet driver");
     }
@@ -1550,7 +1550,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
     wait(&status);
   } else {
     //trying something a bit different
-    int res = execl("/etc/rc.d/init.d/network", "network", "start", NULL);
+    int res = execl("/etc/rc.d/init.d/network", "network", "start", (char*)NULL);
     //int res = execl(ifconfig_binary, "ifconfig", nic_name, "up", NULL);
     if (res != 0) {
       perror("[net_confg] couldn't bring interface up");
@@ -1613,7 +1613,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
       wait(&status);
     } else {
       int res;
-      res = execl(mv_binary, "mv", module_path_new, module_path, NULL);
+      res = execl(mv_binary, "mv", module_path_new, module_path, (char*)NULL);
       if (res != 0) {
         perror("[net_config] mv of new module config file failed ");
       }
@@ -1960,11 +1960,7 @@ overwriteFiles(char *source, char *dest, char *api_name)
   } else {
     int res;
     //printf("!! overwriteFiles mv %s %s\n", source, dest);
-#if (HOST_OS == solaris)
-    res = execl(MV_BINARY, "mv", source, dest, (char*)0);
-#else
-    res = execl(MV_BINARY, "mv", source, dest, NULL);
-#endif
+    res = execl(MV_BINARY, "mv", source, dest, (char*)NULL);
     if (res != 0)
       perror(errmsg);
     _exit(res);
@@ -1986,11 +1982,7 @@ createSymbolicLink(char *original_file, char *symbolic_link)
     waitpid(pid, &status, 0);
   } else {
     int res;
-#if (HOST_OS == solaris)
-    res = execl(SYMBOLIC_LINK_BINARY, "ln", "-s", original_file, symbolic_link, (char*)0);
-#else
-    res = execl(SYMBOLIC_LINK_BINARY, "ln", "-s", original_file, symbolic_link, NULL);
-#endif
+    res = execl(SYMBOLIC_LINK_BINARY, "ln", "-s", original_file, symbolic_link, (char*)NULL);
     if (res != 0)
       perror(errmsg);
     _exit(res);
@@ -2014,11 +2006,7 @@ changeFilePermission(char *mode, char *filename)
     waitpid(pid, &status, 0);
   } else {
     int res;
-#if (HOST_OS == solaris)
-    res = execl(CHMOD_BINARY, "chmod", mode, filename, (char*)0);
-#else
-    res = execl(CHMOD_BINARY, "chmod", mode, filename, NULL);
-#endif
+    res = execl(CHMOD_BINARY, "chmod", mode, filename, (char*)NULL);
     if (res != 0)
       perror(errmsg);
     _exit(res);
@@ -2043,11 +2031,7 @@ delRoute(char *dest, char *gateway, char *api_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-#if (HOST_OS == solaris)
-    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, (char*)0);
-#else
-    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, NULL);
-#endif
+    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, (char*)NULL);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2073,11 +2057,7 @@ delRoute(char *dest, char *gateway, char *interface, char *api_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-#if (HOST_OS == solaris)
-    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, "-ifp", interface, (char*)0);
-#else
-    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, "-ifp", interface, NULL);
-#endif
+    res = execl(ROUTE_BINARY, "route", "delete", dest, gateway, "-ifp", interface, (char*)NULL);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2100,11 +2080,7 @@ addRoute(char *dest, char *gateway, char *api_name)
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-#if (HOST_OS == solaris)
-    int res = execl(ROUTE_BINARY, "route", "add", dest, gateway, (char*)0);
-#else
-    int res = execl(ROUTE_BINARY, "route", "add", dest, gateway, NULL);
-#endif
+    int res = execl(ROUTE_BINARY, "route", "add", dest, gateway, (char*)NULL);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2130,11 +2106,7 @@ addRoute(char *dest, char *gateway, char *interface, char *api_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-#if (HOST_OS == solaris)
-    res = execl(ROUTE_BINARY, "route", "add", dest, gateway, "-ifp", interface, (char*)0);
-#else
-    res = execl(ROUTE_BINARY, "route", "add", dest, gateway, "-ifp", interface, NULL);
-#endif
+    res = execl(ROUTE_BINARY, "route", "add", dest, gateway, "-ifp", interface, (char*)NULL);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2160,11 +2132,7 @@ setIpAndMask(char *ip, char *mask, char *interface, char *api_name)
     waitpid(pid, &status, 0);
   } else {                      // also update the broadcast address field
     int res;
-#if (HOST_OS == solaris)
-    res = execl(IF_CONFIG_BINARY, "ifconfig", interface, ip, "netmask", mask, "broadcast", "+", (char*)0);
-#else
-    res = execl(IF_CONFIG_BINARY, "ifconfig", interface, ip, "netmask", mask, "broadcast", "+", NULL);
-#endif
+    res = execl(IF_CONFIG_BINARY, "ifconfig", interface, ip, "netmask", mask, "broadcast", "+", (char*)NULL);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2581,7 +2549,7 @@ bringUpInterface(char *nic_name, char *ip, char *default_gateway)
     } else if (pid > 0) {
       waitpid(pid, &status, 0);
     } else {
-      int res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "up", (char*)0);
+      int res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "up", (char*)NULL);
       if (res != 0)
         perror(errmsg);
       _exit(res);
@@ -2595,7 +2563,7 @@ bringUpInterface(char *nic_name, char *ip, char *default_gateway)
       waitpid(pid, &status, 0);
     } else {
       int res;
-      res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "plumb", (char*)0);
+      res = execl(IF_CONFIG_BINARY, "ifconfig", nic_name, "plumb", (char*)NULL);
       if (res != 0)
         perror(errmsg);
       _exit(res);
@@ -2624,7 +2592,7 @@ bringUpInterface(char *nic_name, char *ip, char *default_gateway)
         waitpid(pid, &status, 0);
       } else {
         int res;
-        res = execl(STATIC_ROUTE_FILENAME, NULL, (char*)0);
+        res = execl(STATIC_ROUTE_FILENAME, NULL, (char*)NULL);
         if (res != 0)
           perror(errmsg);
         _exit(res);
@@ -2672,7 +2640,7 @@ dropDHCP(char *nic_name)
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(IFCONFIG, "ifconfig", nic_name, "auto-dhcp", "drop", (char*)0);
+    int res = execl(IFCONFIG, "ifconfig", nic_name, "auto-dhcp", "drop", (char*)NULL);
     if (res != 0) {
       perror(errmsg);
     }
@@ -2827,7 +2795,7 @@ down_interface(char *nic_name)
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", (char*)0);
+    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't bring interface down");
     }
@@ -2899,7 +2867,7 @@ mrtg_hostname_change(char *hostname, char *old_hostname)
         waitpid(pid, &status, 0);
       } else {
         // printf("MV: %s %s %s \n",mv_binary,mrtg_path_new, mrtg_path); 
-        res = execl(mv_binary, "mv", mrtg_path_new, mrtg_path, (char*)0);
+        res = execl(mv_binary, "mv", mrtg_path_new, mrtg_path, (char*)NULL);
         if (res != 0) {
           perror("[net_config] mv of new mrtg file failed ");
         }
@@ -3148,7 +3116,7 @@ set_dns_server(char *dns_server_ips)
     waitpid(pid, &status, 0);
   } else {
     int res;
-    res = execl(mv_binary, "mv", dns_path_new, dns_path, (char*)0);
+    res = execl(mv_binary, "mv", dns_path_new, dns_path, (char*)NULL);
     if (res != 0) {
       perror("[net_config] mv of new dns config file failed ");
     }
@@ -3206,7 +3174,7 @@ set_domain_name(char *domain_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-    res = execl(mv_binary, "mv", domain_path_new, domain_path, (char*)0);
+    res = execl(mv_binary, "mv", domain_path_new, domain_path, (char*)NULL);
     if (res != 0) {
       perror("[net_config] mv of new domain config file failed ");
     }
@@ -3262,7 +3230,7 @@ set_search_domain(char *search_name)
     waitpid(pid, &status, 0);
   } else {
     int res;
-    res = execl(mv_binary, "mv", search_domain_path_new, search_domain_path, (char*)0);
+    res = execl(mv_binary, "mv", search_domain_path_new, search_domain_path, (char*)NULL);
     if (res != 0) {
       perror("[net_config] mv of new  search domain config file failed ");
     }
@@ -3410,7 +3378,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", NULL);
+    int res = execl(ifconfig_binary, "ifconfig", nic_name, "down", (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't bring interface down");
     }
@@ -3424,7 +3392,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(rmmod_binary, "rmmod", modname, NULL);
+    int res = execl(rmmod_binary, "rmmod", modname, (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't rmmod the ethernet driver");
     }
@@ -3438,7 +3406,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
   } else if (pid > 0) {
     waitpid(pid, &status, 0);
   } else {
-    int res = execl(insmod_binary, "insmod", modname, options, NULL);
+    int res = execl(insmod_binary, "insmod", modname, options, (char*)NULL);
     if (res != 0) {
       perror("[net_confg] couldn't insmod the ethernet driver");
     }
@@ -3452,7 +3420,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
     waitpid(pid, &status, 0);
   } else {
     //trying something a bit different
-    int res = execl("/etc/rc.d/init.d/network", "network", "start", NULL);
+    int res = execl("/etc/rc.d/init.d/network", "network", "start", (char*)NULL);
     //int res = execl(ifconfig_binary, "ifconfig", nic_name, "up", NULL);
     if (res != 0) {
       perror("[net_confg] couldn't bring interface up");
@@ -3515,7 +3483,7 @@ setNICConnection(char *nic_name, int connection_speed, bool duplex, bool auto_ne
       waitpid(pid, &status, 0);
     } else {
       int res;
-      res = execl(mv_binary, "mv", module_path_new, module_path, NULL);
+      res = execl(mv_binary, "mv", module_path_new, module_path, (char*)NULL);
       if (res != 0) {
         perror("[net_config] mv of new module config file failed ");
       }

@@ -210,11 +210,7 @@ up_interface(char *binary, char *vip, char *interface)
     } else if (pid > 0) {
       wait(&status);
     } else {                    /* Exec the up */
-#if (HOST_OS == freebsd) || (HOST_OS == solaris)
-      int res = execl(binary, "ifconfig", interface, "up", (char *)0);
-#else
-      int res = execl(binary, "ifconfig", interface, "up", NULL);
-#endif
+      int res = execl(binary, "ifconfig", interface, "up", (char*)NULL);
       if (res != 0) {
         perror("[vip_confg] ");
       }
@@ -227,11 +223,7 @@ up_interface(char *binary, char *vip, char *interface)
 
 // "netmask +" is broken on Solaris 2.6 & 2.7,
 // it never actually checks against /etc/netmasks.
-#if (HOST_OS == freebsd) || (HOST_OS == solaris)
-    int res = execl(binary, "ifconfig", interface, vip, "netmask", "+", "broadcast", "+", "metric", "1", (char *)0);
-#else
-    int res = execl(binary, "ifconfig", interface, vip, "netmask", "+", "broadcast", "+", "metric", "1", NULL);
-#endif
+    int res = execl(binary, "ifconfig", interface, vip, "netmask", "+", "broadcast", "+", "metric", "1", (char*)NULL);
     if (res != 0) {
       perror("[vip_config] ");
     }
@@ -302,11 +294,7 @@ down_interface(char *binary, char *vip, char *interface)
     } else if (pid > 0) {
       wait(&status);
     } else {                    /* Exec the remove */
-#if (HOST_OS == freebsd) || (HOST_OS == solaris)
-      int res = execl(binary, "ifconfig", interface, "inet", "0.0.0.0", (char *)0);
-#else
-      int res = execl(binary, "ifconfig", interface, "inet", "0.0.0.0", NULL);
-#endif
+      int res = execl(binary, "ifconfig", interface, "inet", "0.0.0.0", (char*)NULL);
       if (res != 0) {
         perror("[vip_confg] ");
       }
@@ -318,11 +306,7 @@ down_interface(char *binary, char *vip, char *interface)
   } else {                      /* Exec the down */
     int res = 0;
     // don't down the inter on linux, it'll shutdown the driver
-#if (HOST_OS == freebsd) || (HOST_OS == solaris)
-    res = execl(binary, "ifconfig", interface, "down", (char *)0);
-#else
-    res = execl(binary, "ifconfig", interface, "down", NULL);
-#endif
+    res = execl(binary, "ifconfig", interface, "down", (char*)NULL);
     if (res != 0) {
       perror("[vip_confg] ");
     }
