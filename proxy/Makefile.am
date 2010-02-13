@@ -43,13 +43,11 @@ AM_CPPFLAGS = \
 
 bin_PROGRAMS = \
   traffic_server \
-  logcat \
-  logstats \
-  sac \
-  cust_log_fmt_cnvrt
+  traffic_logcat \
+  traffic_logstats \
+  traffic_sac
 
-dist_noinst_SCRIPTS = ts-instantiate.pl
-dist_bin_SCRIPTS = example_alarm_bin.sh example_prep.sh
+noinst_PROGRAMS =  traffic_cust_log_fmt_cnvrt
 
 noinst_HEADERS = \
   api/include/InkAPIaaa.h \
@@ -71,7 +69,7 @@ EXTRA_LIBRARIES	= \
   libClusterHashStandalone.a \
   libTrafficServerStandalone.a
 
-EXTRA_DIST = InkAPITestTool.cc
+EXTRA_DIST = InkAPITestTool.cc example_alarm_bin.sh example_prep.sh
 
 traffic_server_SOURCES = \
   AbstractBuffer.cc \
@@ -171,16 +169,11 @@ traffic_server_LDADD = \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
   @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ \
   @LIBEXPAT@ @LIBDEMANGLE@ @LIBICONV@ \
-  @LIBMLD@ @LIBEXC@ -lm @LIBEV@
+  @LIBMLD@ @LIBEXC@ @LIBM@ @LIBEV@
 
-logcat_CPPFLAGS = \
-  -DPREFIX=\"$(prefix)\" \
-  -DPKGLOGDIR=\"$(pkglogdir)\" \
-  -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\" \
-  $(AM_CPPFLAGS)
-logcat_SOURCES = logcat.cc
-logcat_LDFLAGS = @EXTRA_CXX_LDFLAGS@
-logcat_LDADD = \
+traffic_logcat_SOURCES = logcat.cc
+traffic_logcat_LDFLAGS = @EXTRA_CXX_LDFLAGS@
+traffic_logcat_LDADD = \
   ICP.o \
   ICPConfig.o \
   ICPProcessor.o \
@@ -234,11 +227,11 @@ logcat_LDADD = \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
   @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
-  @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
+  @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ @LIBM@
 
-logstats_SOURCES = logstats.cc
-logstats_LDFLAGS = @EXTRA_CXX_LDFLAGS@
-logstats_LDADD = \
+traffic_logstats_SOURCES = logstats.cc
+traffic_logstats_LDFLAGS = @EXTRA_CXX_LDFLAGS@
+traffic_logstats_LDADD = \
   ICP.o \
   ICPConfig.o \
   ICPProcessor.o \
@@ -294,16 +287,11 @@ logstats_LDADD = \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
   @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
-  @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
+  @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ @LIBM@
 
-sac_CPPFLAGS = \
-  -DPREFIX=\"$(prefix)\" \
-  -DPKGLOGDIR=\"$(pkglogdir)\" \
-  -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\" \
-  $(AM_CPPFLAGS)
-sac_SOURCES = sac.cc
-sac_LDFLAGS = @EXTRA_CXX_LDFLAGS@
-sac_LDADD = \
+traffic_sac_SOURCES = sac.cc
+traffic_sac_LDFLAGS = @EXTRA_CXX_LDFLAGS@
+traffic_sac_LDADD = \
   ICP.o \
   ICPConfig.o \
   ICPProcessor.o \
@@ -357,10 +345,10 @@ sac_LDADD = \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ @LIBRT@ \
   @LIBREGEX@ @LIBPCRE@ @LIBDB@ @LIBSQLITE3@ @LIBSSL@ @LIBTCL@ @LIBDL@ @LIBEV@ \
-  @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ -lm
+  @LIBEXPAT@ @LIBDEMANGLE@ @LIBMLD@ @LIBEXC@ @LIBICONV@ @LIBM@
 
-cust_log_fmt_cnvrt_SOURCES = cust_log_fmt_cnvrt.cc
-cust_log_fmt_cnvrt_LDADD = \
+traffic_cust_log_fmt_cnvrt_SOURCES = cust_log_fmt_cnvrt.cc
+traffic_cust_log_fmt_cnvrt_LDADD = \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ \
   @LIBTCL@ @LIBRT@ @LIBICONV@ @LIBDL@

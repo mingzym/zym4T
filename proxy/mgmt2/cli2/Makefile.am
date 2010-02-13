@@ -28,11 +28,6 @@ AM_CPPFLAGS = \
   -DPKGSYSCONFDIR=\"$(pkgsysconfdir)\" \
   -DPKGLOCALSTATEDIR=\"$(pkglocalstatedir)\"
 
-dist_bin_SCRIPTS = \
-  cli_setdomain.tcl \
-  cli_sethostname.tcl \
-  cli_setrouter.tcl \
-  script_configs.tcl
 
 bin_PROGRAMS = traffic_shell
 traffic_shell_SOURCES = \

@@ -38,7 +38,7 @@ AM_CPPFLAGS = \
 MGMT_DEFS = @MGMT_DEFS@
 DEFS  += $(MGMT_DEFS)
 
-bin_PROGRAMS = api_cli_remote
+noinst_PROGRAMS = traffic_api_cli_remote
 
 noinst_LIBRARIES = libmgmtapiremote.a 
 libmgmtapiremote_a_SOURCES = \
@@ -55,8 +55,8 @@ libmgmtapiremote_a_SOURCES = \
   NetworkUtilsRemote.cc \
   NetworkUtilsRemote.h
 
-api_cli_remote_SOURCES = APITestCliRemote.cc 
-api_cli_remote_LDADD = \
+traffic_api_cli_remote_SOURCES = APITestCliRemote.cc 
+traffic_api_cli_remote_LDADD = \
   libmgmtapiremote.a \
   $(top_builddir)/libinktomi++/libinktomi++.a \
   @LIBTHREAD@ @LIBSOCKET@ @LIBNSL@ @LIBRESOLV@ \

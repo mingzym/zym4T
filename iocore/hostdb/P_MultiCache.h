@@ -56,10 +56,10 @@
 
 // Update these if there is a change to MultiCacheBase
 // There is a separate HOST_DB_CACHE_[MAJOR|MINOR]_VERSION
-#define MULTI_CACHE_MAJOR_VERSION    1
+#define MULTI_CACHE_MAJOR_VERSION    2
 #define MULTI_CACHE_MINOR_VERSION    0
 
-#define MULTI_CACHE_HEAP_HIGH_WATER  0.9
+#define MULTI_CACHE_HEAP_HIGH_WATER  0.8
 
 #define MULTI_CACHE_HEAP_INITIAL     sizeof(inku32)
 #define MULTI_CACHE_HEAP_ALIGNMENT   8
