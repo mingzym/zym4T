@@ -401,10 +401,13 @@ case $host_os in
     ;;
   solaris*)
     if test "x${base_cc}" = "xcc" ;then
-      common_opt="-mt -m32 -D__WORDSIZE=32" # FIXME: This should be detected
+      common_opt="-mt -m64 -D__WORDSIZE=64" # FIXME: This should be detected
       debug_opt="-g $common_opt"
       release_opt="-g $common_opt -xO3"
       cxx_opt="-library=stlport4 -erroff"    
+      AC_DEFINE([_POSIX_PTHREAD_SEMANTICS],1,
+       [posix thread semantics]
+      )
     else # gcc
       common_opt="-pipe -Wall -Werror -Wno-char-subscripts -Wno-write-strings"
       debug_opt="-ggdb3 $common_opt"

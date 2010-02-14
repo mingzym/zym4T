@@ -36,6 +36,7 @@
   
   ****************************************************************************/
 
+#include "ink_config.h"
 #include <assert.h>
 #include <memory.h>
 #include <stdlib.h>
