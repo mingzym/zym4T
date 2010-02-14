@@ -892,8 +892,10 @@ spawn_manager()
   i = 1;
   tok = ink_strtok_r(manager_options, " ", &last);
   options[i++] = tok;
-  while (i < OPTIONS_MAX && (tok = ink_strtok_r(NULL, " ", &last))) {
-    options[i++] = tok;
+  if (tok != NULL) {
+    while (i < OPTIONS_MAX && (tok = ink_strtok_r(NULL, " ", &last))) {
+      options[i++] = tok;
+    }
   }
 
   // coverity[fs_check_call]
