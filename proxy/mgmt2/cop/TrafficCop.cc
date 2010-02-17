@@ -92,9 +92,9 @@ static char manager_options[OPTIONS_LEN_MAX] = "";
 static char log_file[PATH_MAX] = "logs/traffic.out";
 static char bin_path[PATH_MAX] = "bin";
 
-static int autoconf_port = 8013;
-static int rs_port = 8018;
-static int http_backdoor_port = 8080;
+static int autoconf_port = 8083;
+static int rs_port = 8088;
+static int http_backdoor_port = 8084;
 static char http_backdoor_ip[PATH_MAX];
 
 static int manager_failures = 0;
@@ -1566,7 +1566,7 @@ test_server_http_port()
   return test_http_port(http_backdoor_port, request, server_timeout * 1000, ip, ip);
 }
 
-#ifndef OEM_NO_WEBUI
+#ifndef NO_WEBUI
 static int
 test_manager_http_port()
 {
@@ -1609,7 +1609,7 @@ heartbeat_manager()
 #endif
     return err;
   }
-#ifndef OEM_NO_WEBUI
+#ifndef NO_WEBUI
   start = milliseconds();
   err = test_manager_http_port();
 //     fprintf (stderr, "heartbeat_manager[http]() [%d ms]\n",
@@ -1634,7 +1634,7 @@ heartbeat_manager()
     manager_failures = 0;
   }
 
-#endif //OEM_NO_WEBUI
+#endif //NO_WEBUI
 
 #ifdef TRACE_LOG_COP
   cop_log(COP_DEBUG, "Leaving heartbeat_manager() --> %d\n", err);

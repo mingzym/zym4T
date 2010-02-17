@@ -1572,6 +1572,7 @@ processSpawn(char *args[],
   long total;
   bool cutoff;
   char *too_large_msg = "\nfile too large, truncated here...";
+  uid_t saved_euid = 0;
 
   if (pipe(stdinPipe) == -1)
     mgmt_elog(stderr, "[processSpawn] unable to create stdin pipe\n");
@@ -1593,7 +1594,7 @@ processSpawn(char *args[],
     }
     // set uid to be the effective uid if it's run as root
     if (run_as_root) {
-      restoreRootPriv();
+      restoreRootPriv(&saved_euid);
       if (setuid(geteuid()) == -1) {
         mgmt_elog(stderr, "[processSpawn] unable to set uid to euid");
       }
@@ -1684,7 +1685,7 @@ processSpawn(char *args[],
   }
 
   if (run_as_root) {
-    removeRootPriv();
+    removeRootPriv(saved_euid);
   }
 #endif // _WIN32
   return status;
