@@ -25,14 +25,14 @@
  *   Interfaces in this header file are experimental, undocumented and 
  *   are subject to change even across minor releases of Traffic Server.
  *   None of the interfaces in this file are committed to be stable 
- *   unless they are migrated to InkAPI.h  If you require stable APIs to 
+ *   unless they are migrated to ts/ts.h  If you require stable APIs to 
  *   Traffic Server, DO NOT USE anything in this file.
  */
 
 #ifndef __INK_API_PRIVATE_FROZEN_H__
 #define __INK_API_PRIVATE_FROZEN_H__
 
-#include "InkAPI.h"
+#include "ts.h"
 #include "InkAPIPrivateIOCore.h"
 #ifdef __cplusplus
 extern "C"
@@ -170,7 +170,7 @@ extern "C"
  ****************************************************************************/
   inkapi int INKHttpCurrentServerConnectionsGet(int *num_connections);
 
-/* http transaction status -- more in InkAPIPrivate.h */
+/* http transaction status -- more in ts_private.h */
 /****************************************************************************
  *  Get size of response header
  ****************************************************************************/

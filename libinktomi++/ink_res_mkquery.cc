@@ -147,7 +147,7 @@ ink_res_mkquery(ink_res_state statp,
 	hp = (HEADER *) buf;
 	hp->id = htons(++statp->id);
 	hp->opcode = op;
-	hp->rd = (statp->options & RES_RECURSE) != 0U;
+	hp->rd = (statp->options & INK_RES_RECURSE) != 0U;
 	hp->rcode = NOERROR;
 	cp = buf + HFIXEDSZ;
 	ep = buf + buflen;
@@ -240,8 +240,8 @@ labellen(const u_char *lp)
 		return(-1);
 	}
 
-	if ((l & NS_CMPRSFLGS) == NS_TYPE_ELT) {
-		if (l == DNS_LABELTYPE_BITSTRING) {
+	if ((l & NS_CMPRSFLGS) == INK_NS_TYPE_ELT) {
+		if (l == INK_DNS_LABELTYPE_BITSTRING) {
 			if ((bitlen = *(lp + 1)) == 0)
 				bitlen = 256;
 			return((bitlen + 7 ) / 8 + 1);
@@ -368,10 +368,10 @@ ink_ns_name_ntop(const u_char *src, char *dst, size_t dstsiz)
 			errno = EMSGSIZE;
 			return (-1);
 		}
-		if ((n & NS_CMPRSFLGS) == NS_TYPE_ELT) {
+		if ((n & NS_CMPRSFLGS) == INK_NS_TYPE_ELT) {
 			int m;
 
-			if (n != DNS_LABELTYPE_BITSTRING) {
+			if (n != INK_DNS_LABELTYPE_BITSTRING) {
 				/* XXX: labellen should reject this case */
 				errno = EINVAL;
 				return(-1);
@@ -470,10 +470,10 @@ ns_name_ntop(const u_char *src, char *dst, size_t dstsiz)
 			errno = EMSGSIZE;
 			return (-1);
 		}
-		if ((n & NS_CMPRSFLGS) == NS_TYPE_ELT) {
+		if ((n & NS_CMPRSFLGS) == INK_NS_TYPE_ELT) {
 			int m;
 
-			if (n != DNS_LABELTYPE_BITSTRING) {
+			if (n != INK_DNS_LABELTYPE_BITSTRING) {
 				/* XXX: labellen should reject this case */
 				errno = EINVAL;
 				return(-1);

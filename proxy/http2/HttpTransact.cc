@@ -1090,6 +1090,21 @@ HttpTransact::ModifyRequest(State * s)
   if ((hostname = url->host_get(&hostname_len)) == NULL)
     s->hdr_info.client_req_is_server_style = true;
 
+  s->orig_scheme = (scheme = url->scheme_get_wksidx());
+
+  s->method = s->hdr_info.client_request.method_get_wksidx();
+  if (scheme < 0 && s->method != HTTP_WKSIDX_CONNECT) {
+    if (s->client_info.port_attribute == SERVER_PORT_SSL) {
+      url->scheme_set(URL_SCHEME_HTTPS, URL_LEN_HTTPS);
+      s->orig_scheme = URL_WKSIDX_HTTPS;
+    } else {
+      url->scheme_set(URL_SCHEME_HTTP, URL_LEN_HTTP);
+      s->orig_scheme = URL_WKSIDX_HTTP;
+    }
+  }
+  if (s->method == HTTP_WKSIDX_CONNECT && url->port_get() == 0)
+    url->port_set(80);
+
   // If the incoming request is proxy-style AND contains a Host header,
   // then remove the Host header to prevent content spoofing.
 
@@ -1099,15 +1114,26 @@ HttpTransact::ModifyRequest(State * s)
     max_forwards = max_forwards_f->value_get_int();
   }
 
-  if ((max_forwards != 0) && !s->hdr_info.client_req_is_server_style) {
+  if ((max_forwards != 0) && !s->hdr_info.client_req_is_server_style && s->method != HTTP_WKSIDX_CONNECT) {
     MIMEField *host_field = s->hdr_info.client_request.field_find(MIME_FIELD_HOST, MIME_LEN_HOST);
-    int host_val_len;
-    const char *host_val;
+    int host_val_len = hostname_len;
+    const char **host_val = &hostname;
+    int req_host_val_len;
+    const char *req_host_val;
+    int port = url->port_get_raw();
+    char *buf = NULL;
+
+    if (port > 0) {
+      buf = (char *) xmalloc(host_val_len + 15);
+      strncpy(buf, hostname, host_val_len);
+      host_val_len += snprintf(buf + host_val_len, host_val_len + 15, ":%u", port);
+      host_val = (const char**)(&buf);
+    }
 
     if (!host_field ||
         (s->http_config_param->avoid_content_spoofing &&
-         ((host_val = host_field->value_get(&host_val_len)) == NULL ||
-          host_val_len != hostname_len || strncasecmp(hostname, host_val, hostname_len) != 0))) {
+         ((req_host_val = host_field->value_get(&req_host_val_len)) == NULL ||
+          host_val_len != req_host_val_len || strncasecmp(*host_val, req_host_val, host_val_len) != 0))) {
       // instead of deleting the Host: header, set it to URL host for all requests (including HTTP/1.0)
 
       if (!host_field) {
@@ -1115,8 +1141,11 @@ HttpTransact::ModifyRequest(State * s)
         s->hdr_info.client_request.field_attach(host_field);
       }
 
-      s->hdr_info.client_request.field_value_set(host_field, hostname, hostname_len);
+      s->hdr_info.client_request.field_value_set(host_field, *host_val, host_val_len);
     }
+
+    if (buf)
+      xfree(buf);
   }
 
   if (s->http_config_param->normalize_ae_gzip) {
@@ -1133,21 +1162,6 @@ HttpTransact::ModifyRequest(State * s)
       }
     }
   }
-
-  s->orig_scheme = (scheme = url->scheme_get_wksidx());
-
-  s->method = s->hdr_info.client_request.method_get_wksidx();
-  if (scheme < 0 && s->method != HTTP_WKSIDX_CONNECT) {
-    if (s->client_info.port_attribute == SERVER_PORT_SSL) {
-      url->scheme_set(URL_SCHEME_HTTPS, URL_LEN_HTTPS);
-      s->orig_scheme = URL_WKSIDX_HTTPS;
-    } else {
-      url->scheme_set(URL_SCHEME_HTTP, URL_LEN_HTTP);
-      s->orig_scheme = URL_WKSIDX_HTTP;
-    }
-  }
-  if (s->method == HTTP_WKSIDX_CONNECT && url->port_get() == 0)
-    url->port_set(80);
 
   ////////////////////////////////////////////////////////
   // First check for the presence of a host header or   //
@@ -1992,17 +2006,16 @@ HttpTransact::DecideCacheLookup(State * s)
                                                                     MIME_LEN_HOST, &host_len);
         if (host_hdr) {
           char *tmp;
+          int port = 0;
           tmp = (char *) memchr(host_hdr, ':', host_len);
           if (tmp) {
             s->cache_info.lookup_url->host_set(host_hdr, (tmp - host_hdr));
 
-            int port = ink_atoi(tmp + 1, host_len - (tmp + 1 - host_hdr));
-            if (port != 0) {
-              s->cache_info.lookup_url->port_set(port);
-            }
+            port = ink_atoi(tmp + 1, host_len - (tmp + 1 - host_hdr));
           } else {
             s->cache_info.lookup_url->host_set(host_hdr, host_len);
           }
+          s->cache_info.lookup_url->port_set(port);
         }
       }
       HTTP_DEBUG_ASSERT(s->cache_info.lookup_url->valid() == true);
@@ -5348,7 +5361,9 @@ HttpTransact::handle_no_cache_operation_on_forward_server_response(State * s)
       HTTP_DEBUG_ASSERT(s->cache_info.action == CACHE_DO_NO_ACTION);
       s->next_action = SERVER_READ;
     }
-    s->state_machine->enable_redirection = false;
+    if (s->state_machine->redirect_url == NULL) {
+      s->state_machine->enable_redirection = false;
+    }
     break;
   case HTTP_STATUS_NOT_MODIFIED:
     Debug("http_trans", "[hncoofsr] server sent back 304. IMS from client?");
@@ -8201,6 +8216,8 @@ HttpTransact::handle_response_keep_alive_headers(State * s, HTTPVersion ver, HTT
         s->client_info.http_version == HTTPVersion(1, 1) &&
         ((s->http_config_param->chunking_enabled == 1 && s->remap_chunking_enabled != 0) ||
          (s->http_config_param->chunking_enabled == 0 && s->remap_chunking_enabled == 1)) &&
+        // if we're not sending a body, don't set a chunked header regardless of server response
+        !is_response_body_precluded(s->hdr_info.client_response.status_get(), s->method) &&
          // we do not need chunked encoding for internal error messages
          // that are sent to the client if the server response is not valid.
          ((s->source == SOURCE_HTTP_ORIGIN_SERVER &&

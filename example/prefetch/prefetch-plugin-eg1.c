@@ -29,8 +29,8 @@
 
 #include <stdio.h>
 #include <string.h>
-#include "InkAPI.h"
-#include "InkAPIPrivate.h"
+#include <ts/ts.h>
+#include <ts/ts_private.h>
 
 /* We will register the following two hooks */
 

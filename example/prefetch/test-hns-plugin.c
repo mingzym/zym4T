@@ -60,8 +60,8 @@ correctness of the parse/prefetch module. It has the following options:
 #include <fcntl.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#include "InkAPI.h"
-#include "InkAPIPrivate.h"
+#include <ts/ts.h>
+#include <ts/ts_private.h>
 
 /* We will register the following two hooks */
 

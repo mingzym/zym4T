@@ -42,8 +42,8 @@
 #include <sys/time.h>
 #include <sys/resource.h>
 
-#include "RemapAPI.h"
-#include "InkAPI.h"
+#include <ts/remap.h>
+#include <ts/ts.h>
 
 #if __GNUC__ >= 3
 #ifndef likely

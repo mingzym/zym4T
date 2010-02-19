@@ -49,12 +49,17 @@ bin_PROGRAMS = \
 
 noinst_PROGRAMS =  traffic_cust_log_fmt_cnvrt
 
+includedir=$(prefix)/include/ts
+
+include_HEADERS = \
+  api/include/ts.h \
+  api/include/remap.h \
+  api/include/ts_private.h \
+  api/include/ts_private_frozen.h
+
 noinst_HEADERS = \
-  api/include/InkAPIaaa.h \
-  api/include/InkAPI.h \
   api/include/InkAPIHughes.h \
-  api/include/InkAPIPrivateFrozen.h \
-  api/include/InkAPIPrivate.h \
+  api/include/InkAPIaaa.h \
   api/include/InkAPIPrivateIOCore.h \
   ConfigParse.h \
   NTDefs.h \
@@ -124,7 +129,6 @@ traffic_server_SOURCES = \
   Raf.h \
   RegressionSM.h \
   RegressionSM.cc \
-  RemapAPI.h \
   ReverseProxy.cc \
   ReverseProxy.h \
   RniTransStats.h \

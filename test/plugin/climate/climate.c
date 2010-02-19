@@ -52,8 +52,8 @@
 #include <limits.h>
 #include <sys/time.h>
 
-#include "InkAPI.h"
-#include "InkAPIPrivate.h"
+#include "ts.h"
+#include "ts_private.h"
 
 #include "events.h"
 
