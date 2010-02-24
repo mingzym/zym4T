@@ -306,6 +306,14 @@ ink_thread_exit(void *status)
   pthread_exit(status);
 }
 
+#if defined(USE_OLD_EVENTFD)
+static inline void
+ink_create_pipe( int pfd[2])
+{
+  ink_assert(pipe(pfd)==0);
+}
+#endif
+
 #endif /* #if defined(POSIX_THREAD) */
 
 #endif /*_INK_THREAD_H*/

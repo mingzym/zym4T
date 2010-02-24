@@ -214,6 +214,9 @@ initialize_thread_for_net(EThread *thread, int thread_index)
   else
     pd->eio = ev_loop_new(LIBEV_BACKEND_LIST);
 #endif
+#if defined(USE_OLD_EVENTFD)
+  initialize_eventfd(thread);
+#endif
   thread->schedule_imm(get_NetHandler(thread));
 
 #ifndef INACTIVITY_TIMEOUT
@@ -230,6 +233,28 @@ initialize_thread_for_net(EThread *thread, int thread_index)
   thread->ep->start(pd, thread->evpipe[0], 0, EVENTIO_READ);
 #endif
 }
+
+#if defined(USE_OLD_EVENTFD)
+void initialize_eventfd(EThread *thread) {
+
+  int fd = thread->getEventFd();
+  PollDescriptor *pd = get_PollDescriptor(thread);
+  struct epoll_data_ptr *eptr;
+  eptr = (struct epoll_data_ptr *) xmalloc(sizeof(struct epoll_data_ptr));
+  eptr->type = EVENTFD;
+  eptr->data.fd = fd;
+
+
+  struct epoll_event ev;
+  memset(&ev, 0, sizeof(struct epoll_event));
+
+  ev.events = EPOLLIN | EPOLLET;
+  ev.data.ptr = eptr;
+  if (epoll_ctl(pd->epoll_fd, EPOLL_CTL_ADD, fd, &ev) < 0) {
+    Debug("iocore_net", "acceptEvent : Failed to add event add to list epoll list\n");
+  }
+}
+#endif /* USE_OLD_EVENTFD */
 
 // NetHandler method definitions
 
@@ -393,9 +418,24 @@ NetHandler::mainNetEvent(int event, Event *e)
 	epd->refresh(EVENTIO_READ);
 #endif
       }
-    } else if (epd->type == EVENTIO_ASYNC_SIGNAL){
+    } 
+#if !defined(USE_OLD_EVENTFD)
+    else if (epd->type == EVENTIO_ASYNC_SIGNAL){
       net_signal_hook_callback(trigger_event->ethread);
+    } 
+#else /* USE_OLD_EVENTFD */
+    else if (epd->type == EVENTFD) { // use: EVENTIO_ASYNC_SIGNAL
+      char buf[1024];
+      int retVal=-1;
+      do {
+        retVal = socketManager.read(epd->data.fd,&buf,1024);
+      } while(retVal == 1024);
+      if (retVal <=0) {
+        socketManager.close(epd->data.fd);
+        initialize_eventfd(e->ethread);
+      }
     }
+#endif /* USE_OLD_EVENTFD */
     ev_next_event(pd,x);
   }
 

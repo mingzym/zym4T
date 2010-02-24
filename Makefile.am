@@ -30,6 +30,8 @@ DIST_BUILD_USER=`id -nu`
 DIST_BUILD_USER_GROUP=`id -ng`
 DISTCHECK_CONFIGURE_FLAGS=--with-user=${DIST_BUILD_USER} --with-group=${DIST_BUILD_USER_GROUP}
 
+EXTRA_DIST=CHANGES INSTALL STATUS NOTICE LICENSE
+
 installcheck-local:
 	$(DESTDIR)$(bindir)/traffic_server -R 1
 

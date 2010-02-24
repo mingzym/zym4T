@@ -320,6 +320,12 @@ if test "x$with_bdb" != "xno" ; then
    PATH_BDB_LIB="$with_bdb/lib"
 fi
 
+
+# Make sure there is at least one supported backend DB for SimpleDBM
+if test "${with_sqlite3}" = "no" -a "${with_libdb}" = "no"; then
+   AC_MSG_ERROR([Need at least one DB backend, --with-sqlite3 and --with-libdb are supported])
+fi
+
           
 #
 # Installation directories
@@ -600,7 +606,7 @@ AC_CHECK_LIB([expat],[XML_SetUserData],
 )
 
 if test "x${with_sqlite3}" = "xyes"; then
-  AC_CHECK_LIB([sqlite3], [sqlite3_open], 
+  AC_CHECK_LIB([sqlite3], [sqlite3_open_v2], 
     [AC_SUBST([LIBSQLITE3], ["-lsqlite3"])
     ],
     [AC_MSG_FAILURE([check for sqlite3 failed. Have you installed sqlite3-devel?])],
